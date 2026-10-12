@@ -58,3 +58,6 @@ portable rebuild, pass a licensed runtime ZIP with the same folder structure:
 Models are never embedded in that ZIP. Native integration tests under
 `windows/validation` use isolated synthetic fixtures; tests requiring weights
 expect the default model files in `windows/models` and engines in `windows/runtime`.
+`RunChecks.ps1` also expects a 16 kHz mono English WAV at
+`windows/validation/speech-fixture.wav`; supply a sample you are comfortable using
+for a local test. Audio fixtures and personal data are excluded from Git.

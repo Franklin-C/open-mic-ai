@@ -7,9 +7,13 @@ import SwiftUI
     var panel: NSPanel!
     var item: NSStatusItem!
     func applicationDidFinishLaunching(_ notification: Notification) {
-        do { state = try AppState() } catch { NSApplication.shared.terminate(nil); return }
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 720), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "Open Mic AI"; window.minSize = NSSize(width: 960, height: 650); window.isReleasedWhenClosed = false; window.delegate = self
+        do { state = try AppState() }
+        catch {
+            window.contentView = NSHostingView(rootView: VStack(alignment: .leading, spacing: 16) { Text("Open Mic AI could not start").font(.title.bold()); Text(error.localizedDescription).textSelection(.enabled); Text("Close the app, fix access to its data folder, and reopen it.").foregroundStyle(.secondary) }.padding(32).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).background(.white).preferredColorScheme(.light))
+            window.center(); openApp(); return
+        }
         window.contentView = NSHostingView(rootView: MainView(state: state)); window.center(); window.setFrameAutosaveName("OpenMicAI-main")
         panel = NSPanel(contentRect: NSRect(x: 100, y: 100, width: 476, height: 260), styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView], backing: .buffered, defer: false)
         panel.titleVisibility = .hidden; panel.titlebarAppearsTransparent = true; panel.isMovableByWindowBackground = true; panel.level = .floating
@@ -26,8 +30,8 @@ import SwiftUI
     @objc func openApp() { window.makeKeyAndOrderFront(nil); NSApplication.shared.activate(ignoringOtherApps: true) }
     @objc func dictate() { state.shortcut() }
     @objc func quit() { NSApplication.shared.terminate(nil) }
-    func windowShouldClose(_ sender: NSWindow) -> Bool { sender.orderOut(nil); return false }
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    func windowShouldClose(_ sender: NSWindow) -> Bool { if state == nil { return true }; sender.orderOut(nil); return false }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { state == nil }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { openApp(); return true }
     func applicationWillTerminate(_ notification: Notification) { state?.shutdown() }
 }

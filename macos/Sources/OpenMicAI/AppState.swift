@@ -47,7 +47,8 @@ import OpenMicCore
         models.status = { [weak self] in self?.status = $0 }
         hotkey.pressed = { [weak self] in self?.shortcut() }
         hotkey.released = { [weak self] in if let self, self.phase == "recording", self.recordingPreferences.recordingMode == .hold { self.finishRecording() } }
-        try hotkey.register(code: preferences.keyCode, modifiers: preferences.keyModifiers)
+        do { try hotkey.register(code: preferences.keyCode, modifiers: preferences.keyModifiers) }
+        catch { message = error.localizedDescription }
         Task { await loadModels(download: false) }
     }
     func write<T: Encodable>(_ name: String, _ value: T) {
