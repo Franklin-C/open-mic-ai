@@ -1,7 +1,7 @@
 <div align="center">
   <img src="windows/assets/open-mic-ai-ui.png" width="96" alt="Open Mic AI microphone logo">
   <h1>Open Mic AI</h1>
-  <p>Speak. Format. Paste. On your computer.</p>
+  <p>Free, local voice typing and AI editing. Across your apps.</p>
   <p>
     <a href="https://github.com/Franklin-C/open-mic-ai/actions/workflows/build.yml"><img src="https://github.com/Franklin-C/open-mic-ai/actions/workflows/build.yml/badge.svg" alt="Build and test"></a>
     <img src="https://img.shields.io/badge/Windows-native-e53945" alt="Native Windows">
@@ -14,10 +14,18 @@
 
 ![Open Mic AI home and usage dashboard](docs/images/hub-home.png)
 
-Open Mic AI is a background dictation app with local speech recognition and local
-AI editing. Click a text box, press your shortcut, and speak. It formats the result
-and pastes it at your cursor. If the destination cannot accept a paste, Copy is
-always available.
+**Turn your voice into ready-to-use writing, with AI that runs on your computer.**
+Open Mic AI stays in the background. Click a text box, press one shortcut, and
+speak. Choose a raw transcript, a quick cleanup, or polished formatting, then
+have it pasted at your cursor. Highlight existing text to rewrite, translate,
+or summarize it with the same shortcut.
+
+**Dictate anywhere you type.** The floating bar follows your workflow across apps,
+without a browser extension. Automatic paste and selected-text capture depend on
+the text field's accessibility support; Copy is always available as a fallback.
+
+No account, subscription, API key, or hosted inference service. Download your
+models once and keep speaking offline.
 
 **Windows** is the existing native app. **macOS** is a new native Swift preview
 for Apple Silicon and Intel. The Mac port needs real-device testing of microphone
@@ -56,7 +64,64 @@ meaning or speech recognition.
 
 ![Polish and its wording options](docs/images/hub-style.png)
 
+## The floating bar
+
+Drag it where you want it. See provisional words while speaking, an animated
+indicator while AI finishes, and a result card when you translate or summarize.
+
+<table>
+<tr><th>Ready</th><th>Speaking</th><th>AI formatting</th></tr>
+<tr>
+<td><img src="docs/images/flow-bar-preview.png" alt="Small floating bar with Dictate and Open app buttons"></td>
+<td><img src="docs/images/recording-pill.png" alt="Recording bar displaying Please send the report to Sarah tomorrow"></td>
+<td><img src="docs/images/polishing-pill.png" alt="Polishing bar with a processing indicator and the recognized text"></td>
+</tr>
+</table>
+
+<table><tr><th>Highlighted text</th><th>Summary result</th></tr><tr>
+<td><img src="docs/images/selected-text-card-preview.png" alt="Highlighted text with Rewrite, Translate, Summarize and Speak instruction controls"></td>
+<td><img src="docs/images/summary-card-preview.png" alt="Scrollable summary result with a Copy button"></td>
+</tr></table>
+
+These are captures of the Windows interface using synthetic examples. A still
+image shows one frame of the recording and processing animations.
+
 ## Features
+
+Checked **October 12, 2026** against official product documentation. **✓** means
+available; **P** means implemented in our Mac preview and awaiting hands-on
+testing; **?** means not confirmed in the linked sources, not necessarily absent.
+Competitor features can depend on platform, plan, model, and configuration.
+
+| Feature | Open Mic AI Windows | Open Mic AI Mac | [Wispr Flow](https://wisprflow.ai/) | [OpenWhispr](https://openwhispr.com/) | [Superwhisper](https://superwhisper.com/) | [VoiceInk](https://tryvoiceink.com/) |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Desktop platforms | Windows | macOS preview | Windows, macOS | Windows, macOS, Linux | Windows, macOS | macOS |
+| Dictate across apps / automatic paste | ✓ | P | ✓ | ✓ | ✓ | ✓ |
+| Offline speech recognition | ✓ | P | Cloud | ✓ | ✓ | ✓ |
+| Offline AI text processing | ✓ | P | Cloud | ✓ | Message / Mail¹ | Refine / Ollama² |
+| Choose speech and language models separately | ✓ | P | ? | ✓ | ✓ | ✓ |
+| In-app local model downloads | ✓ | P | Cloud | ✓ | ✓ | ✓ |
+| Clean up and format dictation | ✓ | P | ✓ | ✓ | ✓ | ✓ |
+| Custom written instructions | ✓ | P | ? | ? | ✓ | ✓ |
+| Use selected text with spoken AI instructions | ✓ | P | Command Mode | Voice agent | Custom mode | Context + prompt |
+| Personal vocabulary | ✓ | P | ✓ | ✓ | ✓ | ✓ |
+| Spoken snippets / text expansion | ✓ | P | ✓ | ✓ | Replacements | Replacements |
+| Saved dictation results | ✓ | P | ✓ | ✓ | ✓ | ✓ |
+| Deterministic no-added-word check in formatting mode³ | ✓ | P | ? | ? | ? | ? |
+| Speech languages | English | English | Multiple | Multiple | Multiple | Multiple |
+| Published app source | MIT | MIT | ? | MIT | ? | GPL-3.0 |
+
+¹ Superwhisper's local S1-mini runs only in Message and Mail; Custom modes need
+an online language model. ² VoiceInk Refine provides fixed local cleanup; Ollama
+can support prompts with additional setup. ³ Open Mic AI's **My words** rejects
+new or substituted words, while allowing punctuation, formatting, filler removal
+and corrections. This checks wording, not perfect recognition or meaning.
+
+See the [comparison sources and limitations](docs/comparison.md) for the evidence
+behind this table. This is a feature comparison, not an accuracy or speed ranking.
+
+<details>
+<summary><strong>Full Open Mic AI platform checklist</strong></summary>
 
 | Feature | Windows | Mac preview |
 | --- | :---: | :---: |
@@ -80,16 +145,19 @@ meaning or speech recognition.
 | Resumable model downloads | ✓ | — |
 
 The checkmarks describe implemented features; Mac runtime compatibility still
-needs testing. Selection capture depends on the destination app exposing its text
-through the operating system's accessibility APIs. No screenshot contains actual
-user dictation; the examples are synthetic test fixtures.
+needs testing. See the [Windows guide](docs/windows.md), [Mac guide](docs/macos.md),
+and [verification scope](docs/verification.json).
+
+</details>
+
+## Inside the app
 
 <table><tr>
 <td><img src="docs/images/hub-history.png" alt="Searchable dictation history"></td>
 <td><img src="docs/images/hub-models.png" alt="Independent local model selectors"></td>
 </tr><tr>
 <td><img src="docs/images/hub-snippets.png" alt="Inline snippets editor"></td>
-<td><img src="docs/images/selected-text-card-preview.png" alt="Selected-text AI action card"></td>
+<td><img src="docs/images/hub-vocabulary.png" alt="Personal vocabulary and spelling corrections"></td>
 </tr></table>
 
 ## Privacy
