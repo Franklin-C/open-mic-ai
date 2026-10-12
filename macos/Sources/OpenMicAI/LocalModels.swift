@@ -27,7 +27,8 @@ enum MicError: LocalizedError {
     let catalog: ModelCatalog
     var speech: Process?
     var language: Process?
-    var ready = false
+    private var loaded = false
+    var ready: Bool { loaded && speech?.isRunning == true && language?.isRunning == true }
     private var speechURL = URL(string: "http://127.0.0.1:1")!
     private var languageURL = URL(string: "http://127.0.0.1:1")!
     private let key = UUID().uuidString
@@ -86,7 +87,7 @@ enum MicError: LocalizedError {
             for _ in 0..<240 {
                 try Task.checkCancellation()
                 guard speech?.isRunning == true, language?.isRunning == true else { throw MicError.message("A local engine stopped. Try loading models again.") }
-                if await healthy(speechURL), await healthy(languageURL.appendingPathComponent("health")) { ready = true; status("Ready"); return }
+                if await healthy(speechURL), await healthy(languageURL.appendingPathComponent("health")) { loaded = true; status("Ready"); return }
                 try await Task.sleep(nanoseconds: 500_000_000)
             }
             throw MicError.message("Models took too long to load. Choose smaller models and retry.")
@@ -152,5 +153,5 @@ enum MicError: LocalizedError {
         return verdict?["safe"] == true && (!polish || verdict?["complete"] == true)
     }
     func json(_ value: [String: String]) throws -> String { String(data: try JSONSerialization.data(withJSONObject: value), encoding: .utf8)! }
-    func shutdown() { ready = false; speech?.terminate(); language?.terminate(); speech = nil; language = nil }
+    func shutdown() { loaded = false; speech?.terminate(); language?.terminate(); speech = nil; language = nil }
 }

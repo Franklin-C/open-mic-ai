@@ -12,7 +12,7 @@ build_engine() {
   if [[ ! -d "$checkout/.git" ]]; then git init "$checkout"; git -C "$checkout" remote add origin "$repository"; fi
   git -C "$checkout" fetch --depth=1 origin "$revision"
   git -C "$checkout" checkout --detach FETCH_HEAD
-  cmake -S "$checkout" -B "$checkout/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 -DBUILD_SHARED_LIBS=OFF -DGGML_OPENMP=OFF -DGGML_METAL=ON -DGGML_METAL_EMBED_LIBRARY=ON -DGGML_METAL_SHADER_DEBUG=OFF -DLLAMA_CURL=OFF
+  cmake -S "$checkout" -B "$checkout/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_AVX512=OFF -DGGML_OPENMP=OFF -DGGML_METAL=ON -DGGML_METAL_EMBED_LIBRARY=ON -DGGML_METAL_SHADER_DEBUG=OFF -DLLAMA_CURL=OFF -DLLAMA_BUILD_TESTS=OFF -DWHISPER_BUILD_TESTS=OFF
   cmake --build "$checkout/build" --config Release --parallel 3 --target "$target"
   cp "$checkout/build/bin/$target" "$runtime/$target"
   cp "$checkout/LICENSE" "$runtime/$name-LICENSE.txt"

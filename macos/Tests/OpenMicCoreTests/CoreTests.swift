@@ -26,6 +26,7 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(Prompts.editing(style: .polish, reworded: false, custom: "").contains("No added words"))
         XCTAssertTrue(Prompts.editing(style: .polish, reworded: true, custom: "").contains("Reword for clarity"))
         XCTAssertEqual(Preferences().reworded, false)
+        XCTAssertEqual(Preferences().keyModifiers, 4608)
         let value = Preferences()
         XCTAssertEqual(try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(value)).style, .polish)
     }

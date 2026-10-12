@@ -12,7 +12,7 @@ public struct Preferences: Codable {
     public var custom = ""
     public var recordingMode: RecordingMode = .toggle
     public var keyCode: UInt32 = 49
-    public var keyModifiers: UInt32 = 768 // Carbon controlKey | shiftKey
+    public var keyModifiers: UInt32 = 4608 // Carbon controlKey (4096) | shiftKey (512)
     public var shortcutLabel = "Control + Shift + Space"
     public var speechModel = "ggml-small.en.bin"
     public var languageModel = "Qwen3-4B-Instruct-2507-Q3_K_S.gguf"
