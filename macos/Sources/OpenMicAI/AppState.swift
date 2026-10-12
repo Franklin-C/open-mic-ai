@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import ApplicationServices
+import Carbon
 import OpenMicCore
 
 @MainActor final class AppState: ObservableObject {
@@ -39,7 +40,9 @@ import OpenMicCore
         root = dataRoot
         try FileManager.default.createDirectory(at: dataRoot, withIntermediateDirectories: true)
         func read<T: Decodable>(_ name: String, _ fallback: T) -> T { (try? JSONDecoder().decode(T.self, from: Data(contentsOf: dataRoot.appendingPathComponent(name)))) ?? fallback }
-        preferences = read("preferences.json", Preferences()); history = read("history.json", []); snippets = read("snippets.json", []); vocabulary = read("vocabulary.json", [])
+        var recommended = Preferences()
+        if ProcessInfo.processInfo.physicalMemory < 12 * 1_073_741_824 { recommended.speechModel = "ggml-base.en.bin"; recommended.languageModel = "Qwen3-1.7B-Q4_K_M.gguf" }
+        preferences = read("preferences.json", recommended); history = read("history.json", []); snippets = read("snippets.json", []); vocabulary = read("vocabulary.json", [])
         models = try LocalModels(root: root)
         models.status = { [weak self] in self?.status = $0 }
         hotkey.pressed = { [weak self] in self?.shortcut() }

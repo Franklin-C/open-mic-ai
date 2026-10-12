@@ -16,7 +16,7 @@ import Carbon
             let released = GetEventKind(event) == UInt32(kEventHotKeyReleased)
             DispatchQueue.main.async { if !owner.capturing { if released { owner.released() } else { owner.pressed() } } }
             return noErr
-        }, UInt32(events.count), &events, pointer, &handler)
+        }, events.count, &events, pointer, &handler)
     }
     func register(code: UInt32, modifiers: UInt32) throws {
         let identifier = EventHotKeyID(signature: 0x4F4D4943, id: 1)

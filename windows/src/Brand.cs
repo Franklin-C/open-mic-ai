@@ -6,8 +6,8 @@ using System.Reflection;
 [assembly: AssemblyTitle("Open Mic AI")]
 [assembly: AssemblyProduct("Open Mic AI")]
 [assembly: AssemblyDescription("Local dictation, rewriting, translation and summaries")]
-[assembly: AssemblyVersion("3.2.0.0")]
-[assembly: AssemblyFileVersion("3.2.0.0")]
+[assembly: AssemblyVersion("3.3.0.0")]
+[assembly: AssemblyFileVersion("3.3.0.0")]
 
 namespace LocalFlow {
 public static class Brand {
