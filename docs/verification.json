@@ -4,7 +4,7 @@
     "scope": "Native isolated fixtures, canvas selection fallback, resident local-model synthetic text, and 19 writing formats in both wording modes; suite counts overlap. No user history is published.",
     "checks_by_suite": {
       "history-checks": 170,
-      "text-action-checks": 143,
+      "text-action-checks": 146,
       "polish-checks": 91,
       "polish-retry-checks": 45,
       "model-loading-checks": 21,

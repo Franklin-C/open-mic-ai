@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace LocalFlow {
 public static class TextClipboard {
-    static string[] Cells(string line){line=line.Trim();return line.StartsWith("|")&&line.EndsWith("|")?line.Substring(1,line.Length-2).Split('|').Select(c=>c.Trim()).ToArray():null;}
+    static string[] Cells(string line){line=line.Trim();return line.Length>=2&&line.StartsWith("|")&&line.EndsWith("|")?line.Substring(1,line.Length-2).Split('|').Select(c=>c.Trim()).ToArray():null;}
     static string Row(string[] cells,bool header){string tag=header?"th":"td";return "<tr>"+String.Join("",cells.Select(c=>"<"+tag+" style=\"border:1px solid #cccccc;padding:6px;text-align:left\">"+WebUtility.HtmlEncode(c)+"</"+tag+">"))+"</tr>";}
     public static string TableHtml(string text){
         string[] lines=(text??"").Replace("\r","").Split('\n');StringBuilder html=new StringBuilder();bool found=false;

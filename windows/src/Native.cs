@@ -51,15 +51,15 @@ public static class Native {
     }
     public static bool Paste() {return SendChord(0x56);}
     public static bool Copy() {
-        // Preserve held shortcut keys while issuing an unmodified Ctrl+C.
-        ushort[] modifiers={0x10,0x12,0x5B,0x5C};
+        // Finish the shortcut's modifier chord before issuing plain Ctrl+C.
+        // Re-pressing sampled modifiers can leave a key stuck when its physical
+        // release was already queued. The recording key itself is left alone.
+        ushort[] modifiers={0x10,0x11,0x12,0x5B,0x5C};
         ushort[] held=modifiers.Where(k=>(GetAsyncKeyState(k)&0x8000)!=0).ToArray();
-        bool control=(GetAsyncKeyState(0x11)&0x8000)!=0;
         System.Collections.Generic.List<Input> inputs=new System.Collections.Generic.List<Input>();
         Action<ushort,bool> key=(value,up)=>{Input input=new Input {Type=1};input.Data.Keyboard.Key=value;input.Data.Keyboard.Flags=up?2U:0U;inputs.Add(input);};
         foreach(ushort value in held)key(value,true);
-        if(!control)key(0x11,false);key(0x43,false);key(0x43,true);if(!control)key(0x11,true);
-        foreach(ushort value in held)key(value,false);
+        key(0x11,false);key(0x43,false);key(0x43,true);key(0x11,true);
         return SendInput((uint)inputs.Count,inputs.ToArray(),Marshal.SizeOf(typeof(Input)))==inputs.Count;
     }
     static bool SendChord(ushort key) {
