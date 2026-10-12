@@ -24,6 +24,7 @@ app="$PWD/dist/Open Mic AI.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/runtime"
 cp "$binary/OpenMicAI" "$app/Contents/MacOS/"
 cp -R "$binary/OpenMicAI_OpenMicAI.bundle" "$app/Contents/Resources/"
+cp Sources/OpenMicAI/Resources/models.json "$app/Contents/Resources/models.json"
 cp "$runtime/"* "$app/Contents/Resources/runtime/"
 cp Info.plist "$app/Contents/Info.plist"
 if [[ -f Sources/OpenMicAI/Resources/logo.png ]]; then
@@ -35,5 +36,6 @@ if [[ -f Sources/OpenMicAI/Resources/logo.png ]]; then
   iconutil -c icns "$iconset" -o "$app/Contents/Resources/OpenMicAI.icns"
 fi
 codesign --force --deep --sign - "$app"
+"$app/Contents/MacOS/OpenMicAI" --self-test
 ditto -c -k --sequesterRsrc --keepParent "$app" "$PWD/dist/OpenMicAI-macOS-$(uname -m).zip"
 echo "Built $app (development signature; not notarized)"

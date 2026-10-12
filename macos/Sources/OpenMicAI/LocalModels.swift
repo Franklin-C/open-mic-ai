@@ -14,7 +14,8 @@ struct ModelCatalog: Codable {
     let speech: [ModelFile]
     let language: [ModelFile]
     static func load() throws -> ModelCatalog {
-        try JSONDecoder().decode(ModelCatalog.self, from: Data(contentsOf: Bundle.module.url(forResource: "models", withExtension: "json")!))
+        let url = Bundle.main.url(forResource: "models", withExtension: "json") ?? Bundle.module.url(forResource: "models", withExtension: "json")!
+        return try JSONDecoder().decode(ModelCatalog.self, from: Data(contentsOf: url))
     }
 }
 enum MicError: LocalizedError {

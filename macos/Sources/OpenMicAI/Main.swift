@@ -33,6 +33,16 @@ import SwiftUI
 }
 @main enum Launcher {
     @MainActor static func main() {
+        if CommandLine.arguments.contains("--self-test") {
+            do {
+                let catalog = try ModelCatalog.load()
+                guard catalog.speech.count == 2, catalog.language.count == 6 else { throw MicError.message("The bundled model catalog is incomplete.") }
+                let runtime = Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/runtime")
+                for name in ["whisper-server", "llama-server"] { guard FileManager.default.isExecutableFile(atPath: runtime.appendingPathComponent(name).path) else { throw MicError.message("Missing bundled engine: \(name)") } }
+                print("PASS packaged app resources and both local engines")
+            } catch { fputs("Package check failed: \(error.localizedDescription)\n", stderr); exit(1) }
+            return
+        }
         let application = NSApplication.shared
         let delegate = AppDelegate(); application.delegate = delegate
         application.setActivationPolicy(.regular)
