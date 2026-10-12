@@ -118,6 +118,8 @@ original transcript or apply your writing style, then copy the result. Supported
 formats depend on your operating system's installed media codecs. Imports stay in
 history when history saving is enabled; no audio copy is saved.
 
+![Import a recording and copy its transcript inside History](docs/images/hub-import.png)
+
 ## Inside the app
 
 <table><tr>

@@ -7,11 +7,12 @@
                                             "text-action-checks":  121,
                                             "polish-checks":  74,
                                             "polish-retry-checks":  32,
-                                            "model-loading-checks":  21
+                                            "model-loading-checks":  21,
+                                            "media-import-checks":  26
                                         }
                 },
     "macos":  {
-                  "scope":  "Native builds, Swift word-guard tests, package resource checks and engine executable checks. Real-device microphone and paste testing remains.",
+                  "scope":  "Native builds, Swift word-guard and media-decoder tests, package resource checks and engine executable checks. Real-device microphone and paste testing remains.",
                   "status":  "Preview",
                   "build_workflow":  "https://github.com/Franklin-C/open-mic-ai/actions/workflows/build.yml"
               }

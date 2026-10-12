@@ -87,7 +87,7 @@ public sealed class HistoryWindow : Form {
         if(matches.Length>shown)list.Controls.Add(loadMore);if(matches.Length==0)list.Controls.Add(new Label {Text=all.Length==0?"No history yet":"No results",ForeColor=Theme.Muted,AutoSize=true,Margin=new Padding(0,18,0,0)});
         count.Text=matches.Length==all.Length?all.Length+" "+(all.Length==1?"result":"results"):matches.Length+" of "+all.Length+" results";clear.Enabled=all.Length>0;calendar.BoldedDates=all.Select(e=>e.CreatedUtc.ToLocalTime().Date).Distinct().ToArray();calendar.UpdateBoldedDates();ResizeRows();list.ResumeLayout();
     }
-    void ResizeRows(){foreach(Control row in list.Controls)if(row is HistoryResultRow||row is Label&&!((Label)row).AutoSize)row.Width=Math.Max(300,list.ClientSize.Width-23);}
+    void ResizeRows(){foreach(Control row in list.Controls)if(row is HistoryResultRow||row is Label&&!((Label)row).AutoSize)row.Width=Math.Max(300,list.ClientSize.Width-23);list.AutoScrollMinSize=Size.Empty;list.PerformLayout();}
     protected override void Dispose(bool disposing){if(disposing){store.Changed-=HistoryChanged;loadMore.Dispose();}base.Dispose(disposing);}
 }
 }

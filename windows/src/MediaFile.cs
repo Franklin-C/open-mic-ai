@@ -59,7 +59,10 @@ public static class MediaFile {
                 cancel.ThrowIfCancellationRequested();IntPtr sample=IntPtr.Zero,buffer=IntPtr.Zero;byte[] decoded=null;uint stream,flags;long time;
                 try {
                     Check(read(reader,AudioStream,0,out stream,out flags,out time,out sample));
-                    if((flags&1)!=0||(flags&0x30)!=0)throw new InvalidDataException("The audio stream changed or could not be decoded.");
+                    if((flags&1)!=0)throw new InvalidDataException("The audio stream could not be decoded.");
+                    // AAC can announce its native format after decoding starts.
+                    // Accept this when the negotiated PCM output stays unchanged.
+                    if((flags&0x30)!=0){Release(ref actualType);Check(Method<GetMediaType>(reader,6)(reader,AudioStream,out actualType));if(Get(actualType,Rate)!=16000||Get(actualType,Channels)!=1||Get(actualType,Bits)!=16)throw new InvalidDataException("The audio format changed during decoding.");}
                     if(sample!=IntPtr.Zero) {
                         Check(Method<GetBuffer>(sample,41)(sample,out buffer));IntPtr data;uint capacity,length;Check(Method<LockBuffer>(buffer,3)(buffer,out data,out capacity,out length));
                         try {if(length>8*1024*1024||length%2!=0)throw new InvalidDataException("Invalid audio sample.");decoded=new byte[length];Marshal.Copy(data,decoded,0,decoded.Length);}

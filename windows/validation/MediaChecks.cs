@@ -21,6 +21,9 @@ public static class MediaChecks {
         Check(chunks.Length==3,"Long stereo file decodes in three bounded chunks");
         Check(Math.Abs(chunks.Last().Seconds-61)<.05,"Resampling preserves duration");
         Check(chunks.All(c=>c.Pcm.Length<=960000&&MediaFile.HasSound(c.Pcm)),"Chunks are 16 kHz mono PCM with sound");
+        string aac=Path.Combine(root,"tone.m4a");using(Stream resource=typeof(MediaChecks).Assembly.GetManifestResourceStream("OpenMicAI.MediaTone"))using(StreamReader reader=new StreamReader(resource))File.WriteAllBytes(aac,Convert.FromBase64String(reader.ReadToEnd()));
+        MediaChunk[] compressed=await Task.Run(()=>MediaFile.Read(aac,CancellationToken.None).ToArray());
+        Check(compressed.Length==1&&compressed[0].Pcm.Length>0&&MediaFile.HasSound(compressed[0].Pcm),"AAC native-format announcements preserve negotiated PCM output");
         Check(!chunks[0].Overlap&&chunks[1].Overlap&&chunks[0].Pcm.Skip(chunks[0].Pcm.Length-32000).SequenceEqual(chunks[1].Pcm.Take(32000)),"Boundary overlap is preserved");
         Check(MediaText.Join("Please send the report tomorrow.","report tomorrow and call Sarah.",true)=="Please send the report tomorrow. and call Sarah.","Boundary duplicate words are removed");
         Check(MediaText.Join("Call Sarah","Sarah will reply",true)=="Call Sarah Sarah will reply","A single repeated word is not discarded");
