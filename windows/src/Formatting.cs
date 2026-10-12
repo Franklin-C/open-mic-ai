@@ -16,15 +16,26 @@ public static class Formatting {
     public static bool RewordedScopePreserved(string source,string edited){
         int original=Regex.Matches(source??"",@"[\p{L}\p{N}]+").Count,result=Regex.Matches(edited??"",@"[\p{L}\p{N}]+").Count;
         if(result>original*1.25+8)return false;
+        if(!NoNewRepeatedSentences(source,edited))return false;
         if(Regex.IsMatch(edited??"",@"(?:^|\n)\s*(?:Thanks|Thank you|Regards|Best regards|Sincerely)[,.!\s]*$",RegexOptions.IgnoreCase)&&!Regex.IsMatch(source??"",@"\b(?:thanks|thank you|regards|sincerely|appreciate)\b",RegexOptions.IgnoreCase))return false;
-        foreach(Match date in Regex.Matches(source??"",@"\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|June|July|August|September|October|November|December)\b",RegexOptions.IgnoreCase))if(!Regex.IsMatch(edited??"",@"\b"+Regex.Escape(date.Value)+@"\b",RegexOptions.IgnoreCase))return false;
+        foreach(Match date in Regex.Matches(source??"",@"\b(?:today|tomorrow|yesterday|tonight|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|June|July|August|September|October|November|December)\b",RegexOptions.IgnoreCase))if(!Regex.IsMatch(edited??"",@"\b"+Regex.Escape(date.Value)+@"\b",RegexOptions.IgnoreCase))return false;
+        return true;
+    }
+    static string FlatWords(string text){return String.Join(" ",Regex.Matches(text??"",@"[\p{L}\p{N}]+(?:['\u2019][\p{L}\p{N}]+)*").Cast<Match>().Select(m=>m.Value.Replace('\u2019','\'').ToLowerInvariant()));}
+    public static bool NoNewRepeatedSentences(string source,string edited){
+        string before=FlatWords(source),after=FlatWords(edited);
+        foreach(Match sentence in Regex.Matches(edited??"",@"[^.!?\r\n]+[.!?]")){
+            string words=FlatWords(sentence.Value);if(words.Split(' ').Length<6)continue;
+            string pattern=@"(?<!\S)"+Regex.Escape(words)+@"(?!\S)";
+            if(Regex.Matches(after,pattern).Count>Math.Max(1,Regex.Matches(before,pattern).Count))return false;
+        }
         return true;
     }
     public static PreparedText PreparePolish(string text){
         PreparedText result=Prepare(text);
         if(Regex.IsMatch(text,@"\b(literal|literally|quotation marks|quoted words)\b",RegexOptions.IgnoreCase))return result;
         result.Text=Regex.Replace(result.Text,@"^\s*all right(?:[,!.]\s+|\s+(?=(?:I|we)\b))","",RegexOptions.IgnoreCase);
-        result.Text=Regex.Replace(result.Text,@"\s*\bmm-hmm[.!]?\s*$","",RegexOptions.IgnoreCase);
+        result.Text=Regex.Replace(result.Text,@"\bmm[- ]hmm[.!?,]?\s*","",RegexOptions.IgnoreCase);
         string quantity=@"(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)";
         string correctionPattern=@"\b(?:actually(?:[, ]+make (?:that|it))?|no[, ]+make (?:that|it)|sorry(?:[, ]+(?:make (?:that|it)|I mean))?)[, ]+(?<replacement>"+quantity+@"\s+[^,.!?;\r\n]+)[,.!?;]?";
         // Resolve in speech order: the latest correction wins even when the

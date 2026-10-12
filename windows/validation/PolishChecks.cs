@@ -2,12 +2,49 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using LocalFlow;
 
 public static class PolishChecks {
+    public static readonly string[] ProseCases={
+        "I enjoyed the apples bananas and strawberries we ate after the walk.",
+        "Can you ask Nina Leo and Maya whether they can join us on Friday?",
+        "The new screen is cleaner faster and easier to use and I really like it.",
+        "I will send the invoice tomorrow once Maya confirms the address.",
+        "Do you prefer the blue folder or the red one for Friday's meeting?",
+        "I need you to call Maya when you get home because her phone is broken.",
+        "I was tired yesterday but the walk helped and I feel better today.",
+        "What colour is the sky? Could you explain it to me?"
+    };
+    public static readonly string[][] AutomaticCases={
+        new[]{"prose","Could you send the blue folder to Maya before Friday? Don't include the old invoice."},
+        new[]{"paragraphs","I have been thinking about how I spend my evenings. Checking messages after dinner leaves me distracted, and I end up going to bed later than planned. Last week I put my phone in the kitchen and read instead. I slept better on those nights, but I missed a call from my sister. This week I will tell her to call the house phone if she needs me. I want to try this for another week before changing anything else."},
+        new[]{"list","For the picnic I need apples, bananas, pears and three bottles of water. Actually two bananas. Keep the drinks in a separate bag."},
+        new[]{"goals","This month I aim to finish two books, save fifty dollars and walk for twenty minutes every morning. I will review how it went on the last Friday."},
+        new[]{"steps","To reset the printer first switch it off, then unplug it for thirty seconds, plug it back in and print a test page. Don't reset it while a job is printing."},
+        new[]{"recipe","For dinner wash the rice, put it in a pan with two cups of water, bring it to the boil, then reduce the heat and simmer for fifteen minutes. Leave the lid on while it cooks."},
+        new[]{"sections","Progress the beta is ready and the design is approved. Blockers the export fails on large files. Next actions Maya will check the logs on Friday and Lee will test the fix. The release date is still undecided."},
+        new[]{"email","Hi Maya, could you send the revised invoice before Friday? Please keep reference 7319 on it. Thanks, Alex."},
+        new[]{"table","Compare these plans by price and storage. Basic costs five dollars and has ten gigabytes. Pro costs twelve dollars and has one hundred gigabytes."},
+        new[]{"blog","For an article on my personal website about learning to cycle to work. My first ride on Monday took twenty minutes. On Thursday I tried the park route and avoided the traffic. I got wet on Friday because I forgot my jacket. I plan to ride twice next week if it stays dry."},
+        new[]{"essay","For my class I argue that libraries should stay open later. Students who work during the day need somewhere quiet in the evening. Longer hours might help, but staffing costs need review. A trial on Thursdays for one month would give us evidence before deciding."},
+        new[]{"notes","We met this morning to discuss the export error. We agreed to keep the current release date for now. Maya will investigate the large file on Friday and Lee will check the logs. We have not agreed on a fix yet."},
+        new[]{"checklist","Before the trip I want boxes to tick off for packing my passport, charging the camera and checking the train time before Friday. Don't buy another ticket until Maya confirms."},
+        new[]{"outline","For my talk the main topics are privacy, speed and limitations. Under privacy include offline recording and local history. Under speed include loaded models and short recordings. Under limitations include transcription errors."},
+        new[]{"proposal","I suggest moving the printer to the spare room because it interrupts calls. We could try this for two weeks using the existing equipment. No new purchases are needed. Please approve the trial after Lee checks the room on Monday."},
+        new[]{"agenda","At tomorrow's meeting first discuss the export error with Maya, then review the design with Lee, and finally decide whether to run another test. Keep it under thirty minutes."},
+        new[]{"faq","Okay. So here are some of the questions. Number one, Mm-hmm. It's questions and answers actually. But number one, what colour is the sky? The answer would be blue. Number two is what color is water The answer would be blue."},
+        new[]{"social","For my Instagram caption: We are testing later library hours on Thursdays this month. Visit between six and eight and tell us how it works for you. This is a trial and permanent hours have not been decided."},
+        new[]{"script","Maya says: The export failed again. Lee replies: Was it the large test file? Maya says: Yes, the small file worked. Lee replies: Let's check the logs before changing the release date."}
+    };
+    public static async Task Routes(Models models,Action<bool,string> check,Dictionary<string,object> report){
+        MethodInfo router=typeof(Models).GetMethod("ChoosePolishLayout",BindingFlags.Instance|BindingFlags.NonPublic);List<object> results=new List<object>();List<string> failures=new List<string>();report["automatic_routes"]=results;
+        foreach(string[] item in AutomaticCases.Concat(ProseCases.Select(source=>new[]{"prose",source}))){string layout=await (Task<string>)router.Invoke(models,new object[]{item[1],CancellationToken.None});results.Add(new {source=item[1],expected=item[0],layout});Console.WriteLine((layout==item[0]?"PASS ":"FAIL ")+"Auto "+item[0]+" -> "+layout);if(layout!=item[0])failures.Add(item[0]+" -> "+layout);}
+        check(failures.Count==0,"All 19 implied purposes choose the expected layout: "+String.Join(", ",failures));
+    }
     public static async Task Formats(Models models,Action<bool,string> check,Dictionary<string,object> report){
         string[][] cases={
             new[]{"table","Comparison table. Plan price storage. Basic five dollars ten gigabytes. Pro twelve dollars one hundred gigabytes."},
@@ -23,24 +60,44 @@ public static class PolishChecks {
             new[]{"script","Script for two speakers. Maya: The export failed again. Lee: Was it the large test file? Maya: Yes, but the small file worked. Lee: Let's check the logs before changing the release date."}
         };
         List<object> results=new List<object>();report["format_results"]=results;
-        foreach(bool reworded in new[]{false,true})foreach(string[] item in cases){
+        foreach(bool reworded in new[]{false,true})foreach(string[] item in cases.Concat(AutomaticCases)){
             Stopwatch timer=Stopwatch.StartNew();string source=Formatting.PreparePolish(item[1]).Text;
             string result=await models.Rewrite(item[1],"Smart formatting","",CancellationToken.None,"","Medium",reworded);
             results.Add(new {format=item[0],reworded,source,result,seconds=timer.Elapsed.TotalSeconds});Console.WriteLine((reworded?"REWORDED ":"MY WORDS ")+item[0]+" "+result.Replace("\n"," | "));
             check(PolishLayout.Fits(item[0],result),(reworded?"Reworded":"My words")+" renders "+item[0]);
+            if(item[0]=="prose")check(!Regex.IsMatch(result,@"(?m)^\s*(?:- |\d+[.)] |\|)"),"A brief message stays a natural sentence instead of becoming a list or table");
+            if(item[0]=="recipe")check(Regex.Matches(result,@"(?m)^\s*\d+[.)]\s").Count>=4&&result.Contains("fifteen")&&result.Contains("lid"),"Automatic recipe uses cooking steps and preserves timing and lid instructions");
             if(!reworded)check(Formatting.PolishContentComplete(source,result)&&Formatting.PolishWordsPreserved(source,result),"My words retains the complete wording for "+item[0]);
             if(item[0]=="table")check(Regex.IsMatch(result,@"(?mi)^\|[^\r\n]*Basic[^\r\n]*(?:five|5)[^\r\n]*(?:ten|10)[^\r\n]*\|")&&Regex.IsMatch(result,@"(?mi)^\|[^\r\n]*Pro[^\r\n]*(?:twelve|12)[^\r\n]*(?:one hundred|100)[^\r\n]*\|"),"Table keeps each plan's price and storage together");
             if(item[0]=="checklist")check(Regex.Matches(result,@"(?m)^\s*- \[ \] ").Count>=3&&!result.Contains("[x]"),"Checklist separates tasks without marking them complete");
-            if(item[0]=="outline")check(Regex.IsMatch(result,@"(?m)^[ \t]+- "),"Outline retains nested subpoints");
-            if(item[0]=="faq")check(Regex.Matches(result,@"\?").Count>=3&&result.IndexOf("not confirmed",StringComparison.OrdinalIgnoreCase)>=0,"FAQ preserves unanswered questions and uncertainty");
+            if(item[0]=="outline")check(Regex.IsMatch(result,@"(?m)^[ \t]+- ")&&Regex.IsMatch(result,@"(?mi)^- [^\n]*privacy[^\n]*\n(?:  - [^\n]*\n)*?  - [^\n]*local history")&&Regex.IsMatch(result,@"(?mi)^- [^\n]*speed[^\n]*\n(?:  - [^\n]*\n)*?  - [^\n]*short recordings"),"Outline keeps privacy and speed subpoints under their correct parent");
+            if(item[0]=="faq")check(item[1].Contains("sky")?Regex.IsMatch(result,@"sky[^\n]*\?\n[^\n]*blue[^\n]*\n\n[^\n]*water[^\n]*\?\n[^\n]*blue",RegexOptions.IgnoreCase)&&Regex.Matches(result,@"\bblue\b",RegexOptions.IgnoreCase).Count==2:Regex.Matches(result,@"\?").Count>=3&&result.IndexOf("not confirmed",StringComparison.OrdinalIgnoreCase)>=0,"FAQ pairs supplied questions with answers and preserves uncertainty");
             if(item[0]=="social")check(!result.Contains("#")&&!result.Contains("http"),"Social formatting adds no hashtag or link");
-            if(item[0]=="agenda")check(result.Contains("Friday")&&result.Contains("Maya")&&result.Contains("Lee")&&Regex.IsMatch(result,@"(?:thirty|30)",RegexOptions.IgnoreCase)&&!result.Contains("logs")&&!result.Contains("assigned"),"Agenda retains timing and owners without inventing preparation");
+            if(item[0]=="agenda")check(result.Contains(item[1].Contains("tomorrow")?"tomorrow":"Friday")&&result.Contains("Maya")&&result.Contains("Lee")&&Regex.IsMatch(result,@"(?:thirty|30)",RegexOptions.IgnoreCase)&&!result.Contains("logs")&&!result.Contains("assigned"),"Agenda retains timing and owners without inventing preparation");
             if(item[0]=="blog")check(!result.Contains("less rushed")&&!result.Contains("more natural")&&result.Contains("Thursday"),"Blog editing retains the reported experience without adding feelings");
+            check(Formatting.NoNewRepeatedSentences(source,result),"Formatting introduces no repeated sentence: "+item[0]+" "+reworded);
+            if(AutomaticCases.Contains(item)){
+                string selected=await models.TransformSelection(source,"Rewrite","Smart formatting","","English",CancellationToken.None,"",reworded);results.Add(new {format=item[0],reworded,source,result=selected,selected=true});
+                check(PolishLayout.Fits(item[0],selected),(reworded?"Reworded":"My words")+" automatically formats selected "+item[0]);
+                if(!reworded)check(Formatting.PolishContentComplete(source,selected)&&Formatting.PolishWordsPreserved(source,selected),"Selected My words preserves complete wording: "+item[0]);
+            }
         }
-        // Choosing a format skips the router and uses the same editing safeguards.
-        string chosen=await models.Rewrite("Pack the passport and charge the camera before Friday.","Smart formatting","",CancellationToken.None,"","Medium",false,"Checklist");
-        check(PolishLayout.Fits("checklist",chosen)&&chosen.Contains("Friday"),"The in-app Format choice overrides Auto");
+        // Spoken intent is content, not a saved format preference.
+        string chosen=await models.Rewrite("Travel checklist. Pack the passport and charge the camera before Friday.","Smart formatting","",CancellationToken.None,"","Medium",false);
+        check(PolishLayout.Fits("checklist",chosen)&&chosen.Contains("Friday"),"Spoken intent chooses a checklist without a saved format");
+        await Prose(models,check,report);
         report["format_checks_complete"]=true;
+    }
+    public static async Task Prose(Models models,Action<bool,string> check,Dictionary<string,object> report){
+        List<object> results=new List<object>();report["prose_checks"]=results;
+        foreach(bool reworded in new[]{false,true})foreach(bool selected in new[]{false,true})foreach(string source in ProseCases){
+            string result=selected?await models.TransformSelection(source,"Rewrite","Smart formatting","","English",CancellationToken.None,"",reworded):await models.Rewrite(source,"Smart formatting","",CancellationToken.None,"","Medium",reworded);
+            results.Add(new {source,result,reworded,selected});Console.WriteLine("PROSE "+result.Replace("\n"," | "));
+            check(PolishLayout.Fits("prose",result)&&!result.Contains("\n"),(reworded?"Reworded":"My words")+" keeps ordinary "+(selected?"selected text":"dictation")+" as sentences: "+results.Count);
+            if(!reworded)check(Formatting.PolishWordsPreserved(source,result)&&Formatting.PolishContentComplete(source,result),"Sentence retains complete original wording: "+results.Count);
+            if(source.Contains("colour"))check(!Regex.IsMatch(result,@"\bblue\b",RegexOptions.IgnoreCase),"An unanswered question remains unanswered: "+results.Count);
+        }
+        report["prose_checks_complete"]=true;
     }
     static bool Bullets(string text){return Regex.Matches(text,@"(?m)^\s*[-*•]\s+\S").Count>=2;}
     static bool Headings(string text){return text.Split(new[]{'\n'},StringSplitOptions.RemoveEmptyEntries).Count(line=>line.Trim().Length<48&&!Regex.IsMatch(line.Trim(),@"^(?:[-*•]|\d+[.)])\s")&&!Regex.IsMatch(line.Trim(),@"[.!?]$"))>=2;}

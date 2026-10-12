@@ -203,7 +203,6 @@ struct ActivityView: View {
             }
             if state.preferences.style == .polish {
                 Picker("Wording", selection: $state.preferences.reworded) { Text("My words").tag(false); Text("Reworded").tag(true) }.pickerStyle(.segmented).onChange(of: state.preferences.reworded) { _ in state.save() }
-                Picker("Format", selection: Binding(get: { state.preferences.polishFormat ?? "Auto" }, set: { state.preferences.polishFormat = $0; state.save() })) { ForEach(PolishLayout.choices, id: \.self) { Text($0).tag($0) } }
             }
             if state.preferences.style == .custom { Text("Custom prompt").font(.headline); TextEditor(text: $state.preferences.custom).frame(height: 180); Button("Save prompt") { state.save() }.buttonStyle(.borderedProminent) }
         }
@@ -260,6 +259,11 @@ struct ActivityView: View {
                 ScrollView { Text(state.result).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(maxHeight: 150)
                 HStack { Button("Copy") { state.copy(state.result) }.disabled(state.result.isEmpty); Spacer(); Button("Dictate") { state.shortcut() } }
             } else {
+                if state.phase == "recording" && !state.selection.isEmpty {
+                    Text(state.selection).lineLimit(2).font(.caption).foregroundStyle(.secondary)
+                    Text("Say rewrite, translate into a language, or summarize. Or dictate replacement text.").font(.caption).foregroundStyle(.secondary)
+                    HStack { ForEach(["Rewrite", "Translate", "Summarize"], id: \.self) { action in Button(action) { state.transformSelection(action) } } }
+                }
                 if state.phase != "idle" { Text(state.preview).lineLimit(4).font(.callout) }
                 if state.phase == "idle" || state.phase == "recording" { Button(state.phase == "recording" ? "Stop" : "Dictate") { if state.phase == "recording" { state.finishRecording() } else { state.shortcut() } }.buttonStyle(.borderedProminent) }
             }

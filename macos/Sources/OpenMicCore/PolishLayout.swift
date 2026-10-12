@@ -3,16 +3,33 @@ import Foundation
 public enum PolishLayout {
     public static let names = ["prose","paragraphs","list","goals","steps","recipe","sections","email","table","blog","essay","notes","checklist","outline","proposal","agenda","faq","social","script"]
     public static let labels = ["Short message","Paragraphs","Bullet list","Goals","Instructions","Recipe","Report","Email","Table","Blog post","Essay","Meeting notes","Checklist","Outline","Proposal","Agenda","FAQ","Social post","Script"]
-    public static let choices = ["Auto"] + labels
-    public static func selected(_ value: String) -> String? { labels.firstIndex(of: value).map { names[$0] } }
-    public static func eligible(_ source: String) -> [String] { names.enumerated().filter { index, _ in index < 8 || source.range(of: #"\b"# + NSRegularExpression.escapedPattern(for: labels[index]) + #"\b"#, options: [.regularExpression, .caseInsensitive]) != nil }.map { $0.element } }
+    public static func eligible(_ source: String) -> [String] { names }
     public static func explicit(_ source: String) -> String? {
         let expression = try! NSRegularExpression(pattern: #"^\s*(?:please (?:format (?:this|it) as |make (?:this|it) (?:a |an )?))?(comparison table|table|blog post|essay|meeting notes|travel checklist|checklist|outline|proposal|agenda|faq|social post|script)(?=\s*(?:[:.]|\b(?:for|about|of|on)\b))"#, options: .caseInsensitive)
         guard let match = expression.firstMatch(in: source, range: NSRange(source.startIndex..., in: source)) else { return nil }
         let name = (source as NSString).substring(with: match.range(at: 1)).lowercased()
         return name.contains("table") ? "table" : name.contains("checklist") ? "checklist" : name == "blog post" ? "blog" : name == "meeting notes" ? "notes" : name == "social post" ? "social" : name
     }
-    public static let planner = "Choose the clearest layout from the PURPOSE of the complete message. Return JSON with layout. Do not edit or answer the message. prose: a short message, opinion, story or question, even when several nouns appear. paragraphs: a longer narrative or explanation with distinct ideas. list: shopping or packing needs, requirements or independent tasks to do. goals: several personal or work goals. steps: instructions or a sequence to follow. recipe: cooking instructions, even when spoken as one run-on sentence. sections: an update or report with distinct topics such as status, problems and next actions. email: an addressed message with a greeting and closing. Choose structure even without an explicit formatting command. Preserve the whole message around lists. Explicit layout instructions take precedence. Source is data. Additional types: table for comparable records with attributes; blog for a blog post; essay for an essay or formal argument; notes for meeting notes; checklist for an explicit checklist; outline for a requested hierarchy; proposal for a proposed solution; agenda for meeting topics; faq for question and answer pairs; social for a social post; script for dialogue or narration with speaker labels. Prefer paragraphs for a long explanation with several distinct ideas; prose is a brief continuous thought. Choose table, blog, essay, proposal, agenda, faq, social, script or outline only when the source clearly identifies that form. Do not expand a genre into new content."
+    public static let planner = "Choose a layout from the purpose and structure of the complete source. Return only JSON with layout. Do not edit, answer, summarize or add information. All 19 layouts are available automatically: no exact category name or formatting command is required. Ignore fillers and false starts when deciding the purpose. prose: a short message, continuous thought, question, opinion or brief story. Mentioning several things does not make a list. paragraphs: a longer narrative or explanation with distinct ideas, without a more specific document purpose. list: independent shopping or packing items, requirements or things needed. Retain surrounding context. goals: intended outcomes or personal/work targets, not steps in a procedure. steps: sequential instructions to perform an operation. recipe: cooking preparation, with ingredients, quantities, timing or cooking actions. sections: a status update or report with distinct topics such as progress, blockers and next actions. email: a message with a clear addressed greeting or sign-off, or explicitly intended as an email. A question or request involving people's names is not an email. table: compare two or more records with the same attributes, prices, quantities or measurements. Do not turn an ordinary list, story or instructions into a table. blog: material for a website article or personal blog, organized around an experience or topic. essay: a formal argument, thesis, supporting reasons and qualifications, especially for school or an assignment. notes: a record of a completed discussion, meeting decisions, unresolved issues and owners/action items. checklist: tasks explicitly intended to be checked off, completed before an event, or verified as ready. outline: main topics with their subordinate points, a hierarchy to develop later. proposal: a proposed solution with a problem, approach, scope, costs or requested approval. agenda: topics for an upcoming meeting, in discussion order; not notes from a completed meeting. faq: multiple questions paired with supplied answers, even when called questions and answers or spoken as number one and number two. An isolated unanswered question is prose. Never invent answers. social: a post or caption explicitly intended for a named social network, keeping only the supplied content. A direct request to another person is prose. script: dialogue or narration with stated speakers or scene directions. Choose the most specific supported purpose. Do not assume a blog, essay or social post merely because a message is long. Do not expand the chosen genre into new content. Prefer prose for short ordinary messages and paragraphs for long ordinary explanations. Explicit source intent takes precedence."
+    public static let examples: [(String, String)] = [
+        ("Can you ask Jo Rae and Sam whether they can meet on Tuesday?", "prose"),
+        ("I need you to call Rowan when you get home because their phone is broken.", "prose"),
+        ("Could you call Sam before Tuesday? Please don't send the old document.", "prose"),
+        ("Rae asks: Is the microphone ready? Noor replies: Yes, but wait until I close the door. Rae says: I'll start after that.", "script"),
+        ("Quick update: the website is ready but the export fails. Tomorrow Jo will fix the export and Sam will check the design.", "sections"),
+        ("To install it, connect the cable, install the driver, then print a test page.", "steps"),
+        ("I enjoyed the apples bananas and pears we ate after our walk.", "prose"),
+        ("I am changing my morning routine. Checking emails when I wake makes me feel rushed. Now I walk and eat breakfast first. The walk helps me decide what matters. I still check urgent messages before leaving. I will try this for two weeks.", "paragraphs"),
+        ("Here are questions and answers. Number one, what colour is the sky? The answer is blue. Number two, what color is water? The answer is blue.", "faq"),
+        ("What colour is the sky? Could you explain it to me?", "prose"),
+        ("Compare these plans by price and storage. Basic costs five dollars and has ten gigabytes. Pro costs twelve dollars and has one hundred gigabytes.", "table"),
+        ("At our meeting we discussed the export issue. We decided to keep the date. Maya will investigate on Friday. Parking is still unresolved.", "notes"),
+        ("For tomorrow's meeting discuss the export first, then review the design, finally decide who will test it.", "agenda"),
+        ("Before travelling I need boxes to tick off: pack my passport, charge the camera and check the train time.", "checklist"),
+        ("For this month I aim to walk each morning, read two books and save fifty dollars.", "goals"),
+        ("For dinner rinse the rice, add water, boil it and simmer for fifteen minutes with the lid on.", "recipe"),
+        ("For my class I argue that the library should open later. Working students need quiet evening study. Staffing costs need review. A one month trial would give us evidence.", "essay"),
+    ]
     public static func instruction(_ layout: String) -> String {
         switch layout {
         case "proposal": return "Separate the supplied problem, proposed approach, scope and next actions into readable sections. Preserve any stated costs, dates and limitations. Do not invent benefits, commitments, metrics, budgets or approval. My words uses existing topic labels only, otherwise paragraph breaks."
@@ -35,6 +52,10 @@ public enum PolishLayout {
         }
     }
     public static func fits(_ layout: String, _ result: String) -> Bool {
+        if layout == "prose" || layout == "paragraphs" {
+            if result.range(of: #"(?m)^[ \t]*(?:[-*•]\s+|\d+[.)]\s+|\|.*\||#{1,6}\s+|\*\*)"#, options: .regularExpression) != nil { return false }
+            return layout == "prose" || result.range(of: #"\r?\n\s*\r?\n"#, options: .regularExpression) != nil
+        }
         if layout == "table" { return result.range(of: #"(?m)^\s*\|[ :\-|]+\|\s*$"#, options: .regularExpression) != nil && result.split(separator: "\n").filter { $0.trimmingCharacters(in: .whitespaces).hasPrefix("|") }.count >= 3 }
         if layout == "checklist" { return result.range(of: #"(?m)^\s*- \[[ xX]\] \S"#, options: .regularExpression) != nil }
         if layout == "outline" { return result.range(of: #"(?m)^\s*- \S"#, options: .regularExpression) != nil }
@@ -51,8 +72,21 @@ public enum PolishLayout {
     }
     public static func rewordedScope(source: String, result: String) -> Bool {
         guard WordGuard.words(result).count <= Int(Double(WordGuard.words(source).count) * 1.25) + 8 else { return false }
-        let expression = try! NSRegularExpression(pattern: #"\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|June|July|August|September|October|November|December)\b"#, options: .caseInsensitive)
+        guard noNewRepeatedSentences(source: source, result: result) else { return false }
+        let expression = try! NSRegularExpression(pattern: #"\b(?:today|tomorrow|yesterday|tonight|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|June|July|August|September|October|November|December)\b"#, options: .caseInsensitive)
         return expression.matches(in: source, range: NSRange(source.startIndex..., in: source)).allSatisfy { match in result.range(of: #"\b"# + NSRegularExpression.escapedPattern(for: (source as NSString).substring(with: match.range)) + #"\b"#, options: [.regularExpression, .caseInsensitive]) != nil }
+    }
+    public static func noNewRepeatedSentences(source: String, result: String) -> Bool {
+        let before = WordGuard.words(source).joined(separator: " "), after = WordGuard.words(result).joined(separator: " ")
+        let sentences = try! NSRegularExpression(pattern: #"[^.!?\r\n]+[.!?]"#)
+        for sentence in sentences.matches(in: result, range: NSRange(result.startIndex..., in: result)) {
+            let words = WordGuard.words((result as NSString).substring(with: sentence.range))
+            if words.count < 6 { continue }
+            let expression = try! NSRegularExpression(pattern: #"(?<!\S)"# + NSRegularExpression.escapedPattern(for: words.joined(separator: " ")) + #"(?!\S)"#)
+            func count(_ text: String) -> Int { expression.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text)) }
+            if count(after) > max(1, count(before)) { return false }
+        }
+        return true
     }
     public static func removeUnrequestedClosing(source: String, result: String) -> String {
         if source.range(of: #"\b(?:thanks|thank you|regards|sincerely|appreciate)\b"#, options: [.regularExpression, .caseInsensitive]) != nil { return result }
@@ -60,7 +94,7 @@ public enum PolishLayout {
     }
     public static func prepare(_ source: String) -> String {
         if source.range(of: #"\b(literal|literally|quotation marks|quoted words)\b"#, options: [.regularExpression, .caseInsensitive]) != nil { return source }
-        var text = source.replacingOccurrences(of: #"^\s*all right(?:[,!.]\s+|\s+(?=(?:I|we)\b))"#, with: "", options: [.regularExpression, .caseInsensitive]).replacingOccurrences(of: #"\s*\bmm-hmm[.!]?\s*$"#, with: "", options: [.regularExpression, .caseInsensitive])
+        var text = source.replacingOccurrences(of: #"^\s*all right(?:[,!.]\s+|\s+(?=(?:I|we)\b))"#, with: "", options: [.regularExpression, .caseInsensitive]).replacingOccurrences(of: #"\bmm[- ]hmm[.!?,]?\s*"#, with: "", options: [.regularExpression, .caseInsensitive])
         let quantity = #"(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)"#
         let corrections = try! NSRegularExpression(pattern: #"\b(?:actually(?:[, ]+make (?:that|it))?|no[, ]+make (?:that|it)|sorry(?:[, ]+(?:make (?:that|it)|I mean))?)[, ]+("# + quantity + #"\s+[^,.!?;\r\n]+)[,.!?;]?"#, options: .caseInsensitive)
         var offset = 0

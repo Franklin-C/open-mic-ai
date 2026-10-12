@@ -30,6 +30,12 @@ Qwen language-model choices independently. The engines remain loaded. Windows
 uses a different speech engine, so Windows accuracy and timing results should not
 be treated as Mac measurements.
 
+With text highlighted, the shortcut starts recording immediately. Say “rewrite
+this”, “translate into French”, or “summarize this”, or dictate replacement text.
+The three action buttons remain on the floating card. Polish automatically
+chooses the layout; Settings has only My words and Reworded, with no format picker.
+Ordinary messages stay sentences, while supplied Q&A can become an FAQ.
+
 Selected-text actions use macOS accessibility. A changed selection, password
 field, read-only control, or unsupported app is not automatically replaced.
 Translation and summary stay on the card. **Copy** is the fallback.

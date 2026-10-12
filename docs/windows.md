@@ -12,9 +12,11 @@ automatically. You can choose the two roles independently.
 ## One shortcut
 
 Click a text field and press **Ctrl + Shift + Space**. Speak, then press again to
-finish. Select some text before pressing the same shortcut to open **Rewrite**,
-**Translate**, and **Summarize**. Press again or click **Speak instruction** to
-describe the change. A rewrite replaces the exact selection when it remains
+finish. With text highlighted, the same shortcut immediately records your
+instruction. Say “rewrite this more clearly”, “translate into French”, or
+“summarize this”. Or dictate replacement text. **Rewrite**, **Translate**, and
+**Summarize** remain clickable cues on the recording card; Translate opens an
+inline language picker. A rewrite or replacement replaces the exact selection when it remains
 valid; translation and summary appear on the floating card for review and copying.
 For editors such as Google Docs, selection capture can use Ctrl+C when Windows
 accessibility does not expose the highlight. The original clipboard formats are
@@ -28,8 +30,12 @@ stopping after a pause. **Escape** cancels.
 
 Choose **Raw transcript**, **Clean up**, **Polish**, or **Custom** under
 **Settings → Style**. Polish has **My words** and **Reworded** options. My words
-has one **Format** picker: Auto or 19 formats, including tables, blog posts,
-essays, meeting notes, checklists, outlines, proposals, agendas, FAQs and scripts.
+keeps your wording. Both options automatically choose among 19 layouts from
+the message, including tables, blog posts, essays, meeting notes, checklists,
+outlines, proposals, agendas, FAQs and scripts. Ordinary messages stay sentences;
+mentioning several names or objects does not turn a message into a list.
+Questions paired with supplied answers can become an FAQ without naming the format.
+No format selection is needed, and old saved format choices are ignored.
 Auto uses your loaded local LLM. Tables use supplied data and paste as rich
 tables in compatible editors; other fields receive plain-text tables.
 My words recovers useful layout with your original words and checks

@@ -27,8 +27,8 @@ public sealed class UsageStore {
     public void Clear(){Data=new UsageData();file.Save(Data);Action change=Changed;if(change!=null)change();}
     public Task FlushAsync(){return file.FlushAsync();}
 }
-public sealed class AppStyle {public string Application,Style="Keep my wording",Custom="",Cleanup="Light";public bool PolishReworded;public string PolishFormat="Auto";}
+public sealed class AppStyle {public string Application,Style="Keep my wording",Custom="",Cleanup="Light";public bool PolishReworded;}
 public static class StyleRouting {
-    public static AppStyle Resolve(Settings value,string application){string preset=StyleOptions.Selected(value);return new AppStyle {Application=application,Style=preset=="Raw transcript"?"Original transcript":preset=="Polish"?"Smart formatting":preset=="Custom"?"Custom":"Keep my wording",Custom=value.Custom,Cleanup=preset=="Raw transcript"?"None":preset=="Clean up"?"Light":"Medium",PolishReworded=value.PolishReworded,PolishFormat=PolishLayout.Normalize(value.PolishFormat)};}
+    public static AppStyle Resolve(Settings value,string application){string preset=StyleOptions.Selected(value);return new AppStyle {Application=application,Style=preset=="Raw transcript"?"Original transcript":preset=="Polish"?"Smart formatting":preset=="Custom"?"Custom":"Keep my wording",Custom=value.Custom,Cleanup=preset=="Raw transcript"?"None":preset=="Clean up"?"Light":"Medium",PolishReworded=value.PolishReworded};}
 }
 }

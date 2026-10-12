@@ -55,14 +55,16 @@ model selectors.
 | **Polish → Reworded** | Clearer phrasing plus context-aware formatting, while preserving meaning. |
 | **Custom** | Your own instructions in an inline prompt box. |
 
-All writing formats live under **Settings → Style → Polish → Format**. Choose
-**Auto**, or pick a message, paragraphs, bullet list, goals, instructions,
-recipe, report, email, table, blog post, essay, meeting notes, checklist, outline,
-proposal, agenda, FAQ, social post or script. Auto uses the resident local LLM;
-there is no extra model download. Tables include only supplied values and copy
+Polish always chooses the layout automatically from your message: sentences,
+paragraphs, lists, goals, instructions, recipes, reports, emails, tables, blog
+posts, essays, meeting notes, checklists, outlines, proposals, agendas, FAQs,
+social posts or scripts. Choose only **My words** or **Reworded** under
+**Settings → Style → Polish**. Auto uses the resident local LLM; there is no
+extra model download or format to select. Ordinary messages stay sentences;
+mentioning several names or objects does not make a bullet list. Supplied questions
+and answers can become an FAQ without saying “FAQ”. Tables include only supplied values and copy
 as rich tables in compatible editors, with plain-text tables for other fields.
-Polish keeps
-meaningful introductions, descriptions, quantities, conditions and closing
+Polish keeps meaningful introductions, descriptions, quantities, conditions and closing
 requests. “My words” renders the model's layout with the original words when
 needed, and checks wording and completeness before accepting it. Reworded output
 still receives a local meaning check. Quantity corrections update an earlier list
@@ -77,6 +79,9 @@ meaning or speech recognition.
 
 Drag it where you want it. See provisional words while speaking, an animated
 indicator while AI finishes, and a result card when you translate or summarize.
+With text highlighted, the same shortcut starts recording immediately. Say
+“rewrite this more clearly”, “translate into French”, or “summarize this”, or
+dictate replacement text. The three action buttons remain on the recording card.
 
 <table>
 <tr><th>Ready</th><th>Speaking</th><th>AI formatting</th></tr>
@@ -88,7 +93,7 @@ indicator while AI finishes, and a result card when you translate or summarize.
 </table>
 
 <table><tr><th>Highlighted text</th><th>Summary result</th></tr><tr>
-<td><img src="docs/images/selected-text-card-preview.png" alt="Highlighted text with Rewrite, Translate, Summarize and Speak instruction controls"></td>
+<td><img src="docs/images/selected-voice-card-preview.png" alt="Recording a spoken instruction for highlighted text, with Rewrite, Translate and Summarize cues"></td>
 <td><img src="docs/images/summary-card-preview.png" alt="Scrollable summary result with a Copy button"></td>
 </tr></table>
 

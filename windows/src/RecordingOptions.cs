@@ -34,8 +34,8 @@ public static class RecordingModes {
     public static bool ShouldStop(string mode,double duration,bool speech,double silence){return mode=="Automatic"&&(speech?silence>=1.4:duration>=10);}
 }
 public sealed class SpokenAction {
-    public string Action="Rewrite",Language,Instruction;
-    public bool ShowsCard {get{return Action!="Rewrite";}}
+    public string Action="Dictate",Language,Instruction;
+    public bool ShowsCard {get{return Action=="Translate"||Action=="Summarize";}}
     public static SpokenAction Parse(string command,string fallbackLanguage){
         string text=(command??"").Trim();if(text.Length==0)throw new InvalidOperationException("Say what you want to change.");if(text.Length>2000)throw new InvalidOperationException("Use a shorter voice instruction.");
         string start=Regex.Replace(text,@"^(?:(?:please|can you|could you|would you|I want you to)\s+)+","",RegexOptions.IgnoreCase);
@@ -44,6 +44,7 @@ public sealed class SpokenAction {
             result.Action="Translate";Match language=Regex.Match(start,@"\b(?:into|to|in)\s+([\p{L}][\p{L}\p{M} ()-]*?)(?:[,.!?;]|\s+(?:and|using|with|as|but|please)\b|$)",RegexOptions.IgnoreCase);
             if(language.Success)result.Language=TextActions.Language(language.Groups[1].Value);
         }else if(Regex.IsMatch(start,@"^(?:summari[sz]e|summary|give me (?:a |the )?(?:short |brief |quick )?summary|make (?:this|it) (?:a |into a )?summary)\b",RegexOptions.IgnoreCase))result.Action="Summarize";
+        else if(Regex.IsMatch(start,@"^(?:rewrite|reword|rephrase|edit|polish|format|improve|shorten|lengthen|simplify|fix|correct|change|turn|make|add|append|remove|replace|convert)\b",RegexOptions.IgnoreCase))result.Action="Rewrite";
         return result;
     }
 }

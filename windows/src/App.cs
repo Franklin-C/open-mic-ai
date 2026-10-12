@@ -16,7 +16,6 @@ public sealed class Settings {
     public string RecordingMode="Click to start / stop";
     public bool WindowsNotifications=false;
     public bool PolishReworded=false;
-    public string PolishFormat="Auto";
     public int Microphone=-1;
     public int BarX=int.MinValue,BarY=int.MinValue;
     public bool Rewrite=true;
@@ -28,7 +27,7 @@ public sealed class Settings {
     public string HoldMouse="Off",Cleanup="Light";
     public string Speech="tdt-0.6b-v2-q8_0.gguf", Text="Qwen3-4B-Instruct-2507-Q3_K_S.gguf";
     public static Settings Load(string root) {
-        try { Settings value=new JavaScriptSerializer().Deserialize<Settings>(File.ReadAllText(Path.Combine(root,"preferences.json")));if(value==null)return new Settings();if(value.AppStyles==null)value.AppStyles=new List<AppStyle>();value.PolishFormat=PolishLayout.Normalize(value.PolishFormat);value.Style=value.Rewrite?WritingStyles.Normalize(value.Style):"Original transcript";if(!value.Rewrite||value.Style=="Original transcript")value.Cleanup="None";if(value.Cleanup!="None"&&value.Cleanup!="Medium")value.Cleanup="Light";return value; }
+        try { Settings value=new JavaScriptSerializer().Deserialize<Settings>(File.ReadAllText(Path.Combine(root,"preferences.json")));if(value==null)return new Settings();if(value.AppStyles==null)value.AppStyles=new List<AppStyle>();value.Style=value.Rewrite?WritingStyles.Normalize(value.Style):"Original transcript";if(!value.Rewrite||value.Style=="Original transcript")value.Cleanup="None";if(value.Cleanup!="None"&&value.Cleanup!="Medium")value.Cleanup="Light";return value; }
         catch { return new Settings(); }
     }
     public void Save(string root) { File.WriteAllText(Path.Combine(root,"preferences.json"),new JavaScriptSerializer().Serialize(this)); }
@@ -49,7 +48,7 @@ public sealed class DictationSession {
     public DictationSession(){PreviewCancel=CancellationTokenSource.CreateLinkedTokenSource(Cancel.Token);}
     public string Vocabulary,Style,Custom,SelectedText,Cleanup="Light",RecordingMode="Click to start / stop",ActionName,ActionLanguage;
     public TextRules Rules;
-    public bool Rewrite,PolishReworded;public string PolishFormat="Auto";
+    public bool Rewrite,PolishReworded;
     public string Application="Other";
     public double RecordingSeconds;
     public readonly Stopwatch RecordingTime=new Stopwatch();
@@ -96,13 +95,13 @@ public sealed class FlowContext : ApplicationContext {
         ui=SynchronizationContext.Current??new WindowsFormsSynchronizationContext();
         importer.CanStart=()=>!exiting&&!Busy&&!booting&&models!=null&&models.Alive;
         importer.Preferences=()=>new JavaScriptSerializer().Deserialize<Settings>(new JavaScriptSerializer().Serialize(settings));importer.Rules=()=>personalization.Snapshot();
-        importer.Transcribe=(pcm,vocabulary,token)=>models.Transcribe(pcm,vocabulary,token);importer.Rewrite=(text,prefs,vocabulary,token)=>models.Rewrite(text,prefs.Style,prefs.Custom,token,vocabulary,prefs.Cleanup,prefs.PolishReworded,prefs.PolishFormat);
+        importer.Transcribe=(pcm,vocabulary,token)=>models.Transcribe(pcm,vocabulary,token);importer.Rewrite=(text,prefs,vocabulary,token)=>models.Rewrite(text,prefs.Style,prefs.Custom,token,vocabulary,prefs.Cleanup,prefs.PolishReworded);
         importer.Save=(source,result,mode)=>{if(exiting)return;history.Add(source,result,mode);lastRaw=source;lastResult=result;copyResult.Enabled=copyRaw.Enabled=true;};
         holdMouse=new HoldMouseInput(ui);holdMouse.CanStart=()=>!exiting&&!importer.Busy&&!ShortcutWindow.Capturing&&actionSession==null&&(session==null||!session.Stopped)&&models!=null&&models.Alive;
         holdMouse.Down=()=>{if(Hotkey.Mouse(settings.Shortcut)){Toggle();if(settings.RecordingMode=="Hold to talk")heldSession=session;}else if(session==null&&CanDictate()){Begin(false);heldSession=session;}};holdMouse.Up=()=>{if(selectionProbe!=null)pendingHoldReleased=true;DictationSession current=heldSession;heldSession=null;if(current!=null&&session==current&&!current.Stopped)Finish(current);};
         shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;
         shortcut.Toggle=KeyboardToggle;shortcut.Released=KeyboardRelease;shortcut.Cancel=Cancel;pill.Cancel=Cancel;pill.CopyResult=Copy;pill.Release=()=>{if(selectionProbe!=null)pendingHoldReleased=true;if(session!=null&&!session.Stopped)Finish(session);};pill.RecordingMode=RecordingModes.Normalize(settings.RecordingMode);
-        pill.TextAction=RunTextAction;pill.SpeakInstruction=SpeakInstruction;pill.TranslationLanguage=language=>{if(actionSession!=null&&!actionSession.Processing)actionSession.Language=language;};
+        pill.TextAction=ChooseTextAction;pill.SpeakInstruction=SpeakInstruction;pill.TranslationLanguage=language=>{if(actionSession!=null&&!actionSession.Processing)actionSession.Language=language;};
         if(settings.BarX!=int.MinValue&&settings.BarY!=int.MinValue)pill.SetPosition(new Point(settings.BarX,settings.BarY));pill.PositionChanged=point=>{settings.BarX=point.X;settings.BarY=point.Y;SavePreferences();};pill.Persistent=settings.ShowBar;pill.Start=Toggle;pill.History=ShowApp;pill.HideBar=()=>{settings.ShowBar=false;pill.Persistent=false;pill.Conceal();SavePreferences();};
         ContextMenuStrip menu=new ContextMenuStrip();
         menu.Items.Add(status);menu.Items.Add(new ToolStripSeparator());
@@ -192,7 +191,7 @@ public sealed class FlowContext : ApplicationContext {
         }catch(OperationCanceledException){}catch(Exception error){Notify(error.Message);}
         finally {if(selectionProbe==probe)selectionProbe=null;probe.Dispose();}
     }
-    void ShowSelectedActions(FocusTarget target,string source){string language;try{language=TextActions.Language(settings.TranslationLanguage);}catch(Exception error){Notify(error.Message);return;}AppStyle style=StyleRouting.Resolve(settings,ApplicationName(target.Window));actionSession=new TextActionSession {Target=target,Source=source,Style=style.Style,Custom=style.Custom,Language=language,PolishReworded=style.PolishReworded,PolishFormat=style.PolishFormat};shortcut.ListenForEscape(true);pill.ShowTextActions(source,style.Style,language,target.Window);SetStatus("Selected text · choose an action");}
+    void ShowSelectedActions(FocusTarget target,string source){string language;try{language=TextActions.Language(settings.TranslationLanguage);}catch(Exception error){Notify(error.Message);return;}AppStyle style=StyleRouting.Resolve(settings,ApplicationName(target.Window));actionSession=new TextActionSession {Target=target,Source=source,Style=style.Style,Custom=style.Custom,Language=language,PolishReworded=style.PolishReworded};shortcut.ListenForEscape(true);pill.ShowTextActions(source,style.Style,language,target.Window);SetStatus("Selected text · choose an action");}
     async void SpeakInstruction(){TextActionSession current=actionSession;if(current==null||current.Processing)return;try{if(!await current.Target.SelectionMatchesAsync(current.Cancel.Token)){Cancel();Notify("Selection changed. Select the text again.");return;}if(actionSession!=current)return;actionSession=null;FocusTarget target=current.Target;string source=current.Source;current.Dispose();Begin(true,target,source);}catch(OperationCanceledException){}catch(Exception error){Cancel();Notify(error.Message);}}
     async void RunTextAction(string action) {
         TextActionSession current=actionSession;if(current==null||current.Processing||!TextActions.Names.Contains(action))return;
@@ -201,7 +200,7 @@ public sealed class FlowContext : ApplicationContext {
         try {
             if(!await current.Target.SelectionMatchesAsync(current.Cancel.Token)){errorText="Selection changed. Select the text again.";return;}
             pill.ShowActionProcessing(action,current.Source);SetStatus(action+" · local AI");
-            output=await models.TransformSelection(current.Source,action,current.Style,current.Custom,current.Language,current.Cancel.Token,"",current.PolishReworded,current.PolishFormat);
+            output=await models.TransformSelection(current.Source,action,current.Style,current.Custom,current.Language,current.Cancel.Token,"",current.PolishReworded);
             current.Cancel.Token.ThrowIfCancellationRequested();if(exiting||actionSession!=current)return;
             lastRaw=current.Source;lastResult=output;copyRaw.Enabled=copyResult.Enabled=true;
             if(settings.SaveHistory)history.Add(current.Source,output,action=="Translate"?"Translate to "+current.Language:action,current.Source);
@@ -215,23 +214,31 @@ public sealed class FlowContext : ApplicationContext {
             current.Dispose();
         }
     }
+    void ChooseTextAction(string action){
+        DictationSession current=session;
+        if(current!=null&&current.SelectedText!=null&&!current.Stopped){
+            FocusTarget target=current.Target;string source=current.SelectedText;current.Cancel.Cancel();current.Stop();session=null;heldSession=keyboardHeld=null;ShowSelectedActions(target,source);
+            if(action=="Translate"){pill.OpenLanguages();return;}
+        }
+        RunTextAction(action);
+    }
     async void Begin(bool edit,FocusTarget captured=null,string capturedSelection=null) {
         if(selectionProbe!=null)return;
         CancellationTokenSource probe=new CancellationTokenSource();selectionProbe=probe;pendingHoldReleased=false;
-        TextRules rules=personalization.Snapshot();FocusTarget target=captured??FocusTarget.Capture();string application=ApplicationName(target.Window);AppStyle style=StyleRouting.Resolve(settings,application);DictationSession current=new DictationSession {Target=target,Application=application,Vocabulary=rules.Guidance(settings.Vocabulary),Style=style.Style,Custom=style.Custom,Rewrite=style.Cleanup!="None"&&style.Style!="Original transcript",Cleanup=style.Cleanup,PolishReworded=style.PolishReworded,PolishFormat=style.PolishFormat,Rules=rules,RecordingMode=RecordingModes.Normalize(settings.RecordingMode)};
+        TextRules rules=personalization.Snapshot();FocusTarget target=captured??FocusTarget.Capture();string application=ApplicationName(target.Window);AppStyle style=StyleRouting.Resolve(settings,application);DictationSession current=new DictationSession {Target=target,Application=application,Vocabulary=rules.Guidance(settings.Vocabulary),Style=style.Style,Custom=style.Custom,Rewrite=style.Cleanup!="None"&&style.Style!="Original transcript",Cleanup=style.Cleanup,PolishReworded=style.PolishReworded,Rules=rules,RecordingMode=RecordingModes.Normalize(settings.RecordingMode)};
         try {
             if(current.Target.IsPassword){Notify("Choose a text field outside a password box.");return;}
             string selection=capturedSelection??await current.Target.CaptureSelectionAsync(probe.Token);
             probe.Token.ThrowIfCancellationRequested();if(exiting)return;
             if(!target.MatchesCurrent()){Notify("The focused text box changed. Try again.");return;}
-            if(!String.IsNullOrWhiteSpace(selection)){if(selection.Length>9000){Notify("Select up to 9,000 characters.");return;}if(!edit){ShowSelectedActions(target,selection);return;}current.SelectedText=selection;}else if(edit){Notify("Select some text, then speak an instruction.");return;}
+            if(!String.IsNullOrWhiteSpace(selection)){if(selection.Length>9000){Notify("Select up to 9,000 characters.");return;}current.SelectedText=selection;}else if(edit){Notify("Select some text, then speak an instruction.");return;}
             current.Segments.Submit=pcm=>current.AddPending(Recognize(current,pcm));
             current.Mic=new Microphone(settings.Microphone);current.Mic.Audio=current.Segments.Push;
             if(settings.Sounds)System.Media.SystemSounds.Beep.Play();
             if(settings.MutePlayback)current.Playback=new PlaybackMute();
             session=current; current.Mic.Start();current.RecordingTime.Start();
             if(current.RecordingMode=="Hold to talk"){keyboardHeld=heldSession=current;if(pendingHoldReleased){Finish(current);return;}}
-            shortcut.ListenForEscape(true);pill.Prepare(current.SelectedText!=null?"Say an instruction":"Listening",true);pill.Place(current.Target.Window);pill.Reveal();SetStatus(current.RecordingMode=="Hold to talk"?"Listening · release to finish":current.RecordingMode=="Automatic"?"Listening · pauses finish recording":"Listening · press again to finish");
+            shortcut.ListenForEscape(true);if(current.SelectedText!=null)pill.ShowVoiceInstruction(current.SelectedText,current.Target.Window);else{pill.Prepare("Listening",true);pill.Place(current.Target.Window);pill.Reveal();}SetStatus(current.RecordingMode=="Hold to talk"?"Listening · release to finish":current.RecordingMode=="Automatic"?"Listening · pauses finish recording":"Listening · press again to finish");
         } catch(OperationCanceledException){}catch(Exception e){current.Cancel.Cancel();if(current.Mic!=null)current.Mic.Dispose();if(current.Playback!=null)current.Playback.Dispose();session=null;Notify(e.Message);}
         finally {if(selectionProbe==probe)selectionProbe=null;probe.Dispose();if(session!=current){current.Cancel.Dispose();current.PreviewCancel.Dispose();}}
     }
@@ -249,7 +256,7 @@ public sealed class FlowContext : ApplicationContext {
             lastRaw=text;copyRaw.Enabled=true;recognized=text;pill.UpdateTranscript(text);
             TextRules rules=current.Rules??new TextRules(new PersonalData());PreparedDictation prepared=current.SelectedText==null?rules.Prepare(text):null;
             string output;
-            if(current.SelectedText!=null){SpokenAction action=SpokenAction.Parse(text,settings.TranslationLanguage);current.ActionName=action.Action;current.ActionLanguage=action.Language;cardOutput=action.ShowsCard;pill.ShowActionProcessing(action.Action,text);output=action.Action=="Rewrite"?await models.EditSelection(current.SelectedText,text,current.Cancel.Token,current.Vocabulary):await models.TransformSelection(current.SelectedText,action.Action,current.Style,current.Custom,action.Language,current.Cancel.Token,action.Instruction);}
+            if(current.SelectedText!=null){SpokenAction action=SpokenAction.Parse(text,settings.TranslationLanguage);current.ActionName=action.Action;current.ActionLanguage=action.Language;cardOutput=action.ShowsCard;pill.ShowActionProcessing(action.Action,text);if(action.Action=="Dictate"){prepared=rules.Prepare(text);output=current.Rewrite?await models.Rewrite(prepared.Text,current.Style,current.Custom,current.Cancel.Token,current.Vocabulary,current.Cleanup,current.PolishReworded):prepared.Text;}else output=action.Action=="Rewrite"?await models.EditSelection(current.SelectedText,text,current.Cancel.Token,current.Vocabulary):await models.TransformSelection(current.SelectedText,action.Action,current.Style,current.Custom,action.Language,current.Cancel.Token,action.Instruction);}
             else output=current.Rewrite?await models.Rewrite(prepared.Text,current.Style,current.Custom,current.Cancel.Token,current.Vocabulary,current.Cleanup,current.PolishReworded):prepared.Text;
             if(prepared!=null)output=rules.Finish(output,prepared);
             current.Cancel.Token.ThrowIfCancellationRequested();if(exiting)return;

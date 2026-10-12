@@ -81,8 +81,7 @@ import OpenMicCore
         if target?.password == true { message = "Choose a text box outside a password field."; return }
         selection = target?.selected ?? ""
         if selection.count > 9000 { message = "Select up to 9,000 characters."; return }
-        if !selection.isEmpty { phase = "actions"; preview = selection; result = ""; showBar(); return }
-        startRecording(instruction: false)
+        startRecording(instruction: !selection.isEmpty)
     }
     func startRecording(instruction: Bool) {
         guard phase != "recording" else { return }
@@ -131,14 +130,10 @@ import OpenMicCore
                 guard !transcript.isEmpty else { phase = "result"; preview = "No speech detected"; return }
                 preview = transcript; phase = "ai"
                 if voiceInstruction {
-                    var action = "Rewrite", prefs = recordingPreferences
-                    if transcript.lowercased().hasPrefix("translate") {
-                        action = "Translate"
-                        if let range = transcript.range(of: #"(?i)\b(?:into|to|in)\s+([A-Za-z][A-Za-z -]{0,50})"#, options: .regularExpression) {
-                            let clause = String(transcript[range]); prefs.translationLanguage = clause.replacingOccurrences(of: #"(?i)^(?:into|to|in)\s+"#, with: "", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
-                        }
-                    } else if transcript.lowercased().hasPrefix("summar") { action = "Summarize" }
-                    let output = try await models.transform(selection, action: action, preferences: prefs, spoken: transcript)
+                    let command = VoiceCommand.parse(transcript, language: recordingPreferences.translationLanguage)
+                    var prefs = recordingPreferences; prefs.translationLanguage = command.language
+                    let action = command.action
+                    let output = try await models.transform(action == "Dictate" ? expand(transcript) : selection, action: action, preferences: prefs, spoken: action == "Dictate" ? "" : transcript)
                     await deliver(source: selection, output: output, action: action, target: target, current: current)
                 } else {
                     let output = try await models.transform(expand(transcript), action: "Dictate", preferences: recordingPreferences)
@@ -148,7 +143,9 @@ import OpenMicCore
         }
     }
     func transformSelection(_ action: String) {
-        guard phase == "actions", target?.matches(requireSelection: true) == true else { cancel(); message = "Selection changed. Select it again."; return }
+        guard phase == "actions" || (phase == "recording" && !selection.isEmpty) else { return }
+        guard target?.matches(requireSelection: true) == true else { cancel(); message = "Selection changed. Select it again."; return }
+        if phase == "recording" { timer?.invalidate(); timer = nil; audio.stop(); previewTask?.cancel(); work?.cancel(); epoch = UUID() }
         phase = "ai"; let source = selection, target = target, current = epoch, prefs = preferences
         work = Task {
             do { let output = try await models.transform(source, action: action, preferences: prefs); await deliver(source: source, output: output, action: action, target: target, current: current) }
@@ -159,7 +156,7 @@ import OpenMicCore
         guard !Task.isCancelled, epoch == current else { return }
         result = output; addHistory(source: source, result: output, action: action, seconds: seconds)
         var pasted = false
-        if action == "Dictate" || action == "Rewrite", let target { pasted = await target.paste(output, replacing: action == "Rewrite") }
+        if action == "Dictate" || action == "Rewrite", let target { pasted = await target.paste(output, replacing: action == "Rewrite" || !selection.isEmpty) }
         guard epoch == current else { return }
         preview = action == "Translate" || action == "Summarize" ? action : pasted ? "Pasted" : "Ready to copy"
         phase = "result"; showBar()

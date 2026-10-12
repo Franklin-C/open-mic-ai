@@ -1,15 +1,16 @@
 {
   "windows": {
     "complete": true,
-    "scope": "Native isolated fixtures, canvas selection fallback, resident local-model synthetic text, and 19 writing formats in both wording modes; suite counts overlap. No user history is published.",
+    "scope": "Native isolated fixtures, canvas selection fallback, immediate selected-text recording and spoken replacement, and resident local-model synthetic text. All 19 automatically inferred formats were checked in both wording modes for dictation and selected-text rewriting: 98 format outputs, plus 32 ordinary-message outputs. Suite counts overlap. No user history is published.",
     "checks_by_suite": {
       "history-checks": 170,
-      "text-action-checks": 146,
+      "text-action-checks": 147,
       "polish-checks": 91,
-      "polish-retry-checks": 45,
+      "core-checks": 82,
       "model-loading-checks": 21,
       "media-import-checks": 26,
-      "format-checks": 48
+      "automatic-format-checks": 292,
+      "automatic-routing-checks": 28
     }
   },
   "macos": {

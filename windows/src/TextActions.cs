@@ -32,7 +32,7 @@ public sealed class TextActionSession : IDisposable {
     public readonly CancellationTokenSource Cancel=new CancellationTokenSource();
     public FocusTarget Target;
     public string Source,Style,Custom,Language;
-    public bool Processing,PolishReworded;public string PolishFormat="Auto";
+    public bool Processing,PolishReworded;
     public void Dispose(){Cancel.Dispose();}
 }
 }

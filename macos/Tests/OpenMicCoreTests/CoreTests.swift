@@ -2,10 +2,34 @@ import XCTest
 @testable import OpenMicCore
 
 final class CoreTests: XCTestCase {
+    func testFaqPairsAndUnansweredQuestions() throws {
+        let faq = try XCTUnwrap(FaqFormatting.render(#"{"before":"Questions and answers.","pairs":[{"question":"What colour is the sky","answer":"Blue."},{"question":"Is parking confirmed","answer":"Not confirmed."},{"question":"Is lunch included","answer":""}],"after":""}"#))
+        XCTAssertTrue(faq.contains("What colour is the sky?\nBlue.\n\nIs parking confirmed?\nNot confirmed.\n\nIs lunch included?"))
+        XCTAssertFalse(faq.contains("Yes"))
+    }
+    func testProseRejectsForcedLists() {
+        XCTAssertFalse(PolishLayout.rewordedScope(source: "At tomorrow's meeting discuss the export.", result: "Discuss the export."))
+        XCTAssertTrue(PolishLayout.fits("prose", "Could you call Maya on Friday?"))
+        for result in ["- Call Maya.\n- On Friday.", "1. Call Maya.", "| A | B |\n| --- | --- |", "# Invented heading\nMessage."] { XCTAssertFalse(PolishLayout.fits("prose", result)) }
+        XCTAssertFalse(PolishLayout.fits("paragraphs", "First thought.\n\n- Second thought."))
+        XCTAssertTrue(PolishLayout.fits("paragraphs", "First thought.\n\nSecond thought."))
+    }
+    func testSelectedVoiceCommandsAndReplacement() {
+        XCTAssertEqual(VoiceCommand.parse("Could you translate this into Spanish, please?", language: "French").language, "Spanish")
+        XCTAssertEqual(VoiceCommand.parse("Please summarize this in three bullets.", language: "French").action, "Summarize")
+        XCTAssertEqual(VoiceCommand.parse("Rewrite this as a friendly email.", language: "French").action, "Rewrite")
+        XCTAssertEqual(VoiceCommand.parse("The revised invoice will arrive on Friday.", language: "French").action, "Dictate")
+    }
+    func testNoNewRepeatedSentencesAndOutlineHierarchy() throws {
+        let sentence = "I plan to ride twice next week if it stays dry."
+        XCTAssertFalse(PolishLayout.noNewRepeatedSentences(source: sentence, result: sentence + "\n\n" + sentence))
+        XCTAssertTrue(PolishLayout.noNewRepeatedSentences(source: sentence + " " + sentence, result: sentence + "\n" + sentence))
+        let nested = try XCTUnwrap(OutlineFormatting.render(#"{"before":"The main topics are privacy and speed.","groups":[{"topic":"Under privacy include","items":["Offline recording","local history"]},{"topic":"Under speed include","items":["Loaded models"]}],"after":""}"#))
+        XCTAssertTrue(nested.contains("- Under privacy include\n  - Offline recording\n  - local history\n- Under speed include\n  - Loaded models"))
+    }
     func testWritingFormatsAndTables() throws {
-        XCTAssertEqual(PolishLayout.choices.count, 20)
-        XCTAssertEqual(PolishLayout.selected("Table"), "table")
-        XCTAssertNil(PolishLayout.selected("Auto"))
+        XCTAssertEqual(PolishLayout.names.count, 19)
+        XCTAssertEqual(PolishLayout.eligible("What colour is the sky? Blue."), PolishLayout.names)
         XCTAssertEqual(PolishLayout.explicit("Travel checklist. Pack the passport."), "checklist")
         XCTAssertNil(PolishLayout.explicit("The cafe had tables and chairs."))
         let rendered = try XCTUnwrap(TableFormatting.render(#"{"before":"Comparison table. Plan price storage. Basic five dollars ten gigabytes.","headers":["Plan","price","storage"],"rows":[["Basic","five dollars","ten gigabytes"]],"after":""}"#))
@@ -18,8 +42,13 @@ final class CoreTests: XCTestCase {
         let checklist = try XCTUnwrap(WordLayout.project(source: "Travel checklist pack the passport and charge the camera before Friday.", layout: "Travel checklist\n\n- [ ] Pack the passport\n- [ ] Charge the camera before Friday."))
         XCTAssertTrue(PolishLayout.fits("checklist", checklist))
         XCTAssertTrue(PolishLayout.complete(source: "Travel checklist pack the passport and charge the camera before Friday.", result: checklist))
-        var preferences = Preferences(); preferences.polishFormat = "Checklist"
-        XCTAssertEqual(try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(preferences)).polishFormat, "Checklist")
+        var preferences = Preferences(); preferences.reworded = true
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(preferences)) as? [String: Any])
+        legacy["polishFormat"] = "Checklist"
+        let migrated = try JSONDecoder().decode(Preferences.self, from: JSONSerialization.data(withJSONObject: legacy))
+        XCTAssertTrue(migrated.reworded)
+        let current = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(migrated)) as? [String: Any])
+        XCTAssertNil(current["polishFormat"])
     }
     func testContextualLayoutAndCorrections() {
         XCTAssertEqual(PolishLayout.prepare("Add bananas, pears, three apples. Actually two bananas."), "Add two bananas, pears, three apples.")
