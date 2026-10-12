@@ -2,6 +2,15 @@ import XCTest
 @testable import OpenMicCore
 
 final class CoreTests: XCTestCase {
+    func testImportedTextOverlapAndLongEditing() {
+        XCTAssertEqual(MediaText.join("Please send the report tomorrow.", "report tomorrow and call Sarah.", overlap: true), "Please send the report tomorrow. and call Sarah.")
+        XCTAssertEqual(MediaText.join("Please call Sarah", "Sarah will reply", overlap: true), "Please call Sarah Sarah will reply")
+        XCTAssertEqual(MediaText.join("Say hello", "Say hello", overlap: false), "Say hello Say hello")
+        let source = String(repeating: "Please keep every sentence. ", count: 1000)
+        let parts = MediaText.parts(source)
+        XCTAssertTrue(parts.allSatisfy { $0.count <= 4500 })
+        XCTAssertEqual(WordGuard.words(parts.joined(separator: " ")), WordGuard.words(source))
+    }
     func testFormattingAllowsPunctuationAndNumbering() {
         XCTAssertTrue(WordGuard.preservesWords(source: "first connect the cable then print a page", result: "1. First, connect the cable.\n2. Then print a page."))
         XCTAssertTrue(WordGuard.preservesWords(source: "I want a list with apples and two strawberries", result: "I want a list with:\n- Apples\n- Two strawberries"))

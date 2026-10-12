@@ -90,7 +90,7 @@ image shows one frame of the recording and processing animations.
 
 **✓** Included · **✕** Unavailable · **-** Not documented. Checked October 12, 2026.
 
-| [Feature](docs/comparison.md) | **Open Mic AI** | [Wispr Flow](https://wisprflow.ai/) | [OpenWhispr](https://openwhispr.com/) | [Superwhisper](https://superwhisper.com/) | [VoiceInk](https://tryvoiceink.com/) |
+| Feature | **Open Mic AI** | **Wispr Flow** | **OpenWhispr** | **Superwhisper** | **VoiceInk** |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | Desktop apps | Windows; Mac preview | Windows, Mac | Windows, Mac, Linux | Windows, Mac | Mac |
 | Dictate into a text box and paste automatically | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -107,45 +107,16 @@ image shows one frame of the recording and processing animations.
 | Expand a spoken phrase into saved text | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Save and revisit dictation results | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Validate that formatting adds no new words | ✓ My words | - | - | - | - |
-| Unlimited dictation and AI editing for free | ✓ | Paid plan | ✓ Local mode | Paid AI features | Build from source |
+| Cost | Free | Free tier; paid unlimited | Free local; paid cloud | Free dictation; paid AI | Paid app; free source build |
 | Open-source app | ✓ MIT | - | ✓ MIT | - | ✓ GPL-3.0 |
 | Automatically choose a style for each app | ✕ | ✓ | - | ✓ | ✓ |
 | Record meetings with speaker labels | ✕ | ✓ | ✓ | ✓ | - |
-| Transcribe imported audio or video files | ✕ | - | ✓ | ✓ Pro | ✓ |
-| Optional cloud processing | ✕ | ✓ | ✓ | ✓ | ✓ |
-| Mobile apps | ✕ | iOS, Android | iOS | iOS, Android | iOS |
-| Linux app | ✕ | ✕ | ✓ | Planned | ✕ |
+| Transcribe imported audio or video files | ✓ | - | ✓ | ✓ Pro | ✓ |
 
-<details>
-<summary><strong>Full Open Mic AI platform checklist</strong></summary>
-
-| Feature | Open Mic AI |
-| --- | :---: |
-| Background tray / menu-bar app | ✓ |
-| Local English speech-to-text and local language model | ✓ |
-| Translate selected text into multiple languages | ✓ |
-| Independent model selectors and in-app downloads | ✓ |
-| Models stay loaded and ready | ✓ |
-| Custom keyboard shortcut capture | ✓ |
-| Click, hold, or automatic recording | ✓ |
-| Mouse 4 / Mouse 5 shortcut | Windows |
-| Draggable floating bar with provisional transcript | ✓ |
-| AI processing indicator and Copy fallback | ✓ |
-| Selected-text rewrite, translate and summarize | ✓ |
-| Spoken instructions for selected text | ✓ |
-| Guarded automatic paste / replacement | ✓ |
-| Local history, search and date filter | ✓ |
-| Home statistics and five recent dictations | ✓ |
-| Activity dates, word counts and month labels | ✓ |
-| Spoken snippets and personal vocabulary | ✓ |
-| Start at sign-in, sounds and playback mute | Windows |
-| Resumable model downloads | Windows |
-
-The checkmarks describe implemented features; Mac runtime compatibility still
-needs testing. See the [Windows guide](docs/windows.md), [Mac guide](docs/macos.md),
-and [verification scope](docs/verification.json).
-
-</details>
+In **History**, choose **Import file** to transcribe a recording locally. Keep the
+original transcript or apply your writing style, then copy the result. Supported
+formats depend on your operating system's installed media codecs. Imports stay in
+history when history saving is enabled; no audio copy is saved.
 
 ## Inside the app
 

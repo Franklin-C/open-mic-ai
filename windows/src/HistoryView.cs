@@ -62,10 +62,12 @@ public sealed class HistoryWindow : Form {
     readonly RowStyle calendarRow=new RowStyle(SizeType.Absolute,0);
     DateTime? selectedDate;
     int shown=50;bool confirmingClear;
-    public HistoryWindow(HistoryStore history,bool enabled,Action<bool> savePreference) {
+    public HistoryWindow(HistoryStore history,bool enabled,Action<bool> savePreference,MediaImportController importer=null) {
         store=history;Text="Open Mic AI history";ClientSize=new Size(760,650);MinimumSize=new Size(650,560);Font=new Font("Segoe UI",10);BackColor=Color.White;
-        TableLayoutPanel layout=new TableLayoutPanel {Dock=DockStyle.Fill,Padding=new Padding(24,12,24,12),ColumnCount=1,RowCount=6};
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute,50));layout.RowStyles.Add(calendarRow);layout.RowStyles.Add(new RowStyle(SizeType.Absolute,31));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,26));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,42));Controls.Add(layout);
+        TableLayoutPanel shell=new TableLayoutPanel {Dock=DockStyle.Fill,ColumnCount=1,RowCount=2,Margin=Padding.Empty};shell.RowStyles.Add(new RowStyle(SizeType.Absolute,importer==null?0:180));shell.RowStyles.Add(new RowStyle(SizeType.Percent,100));Controls.Add(shell);
+        if(importer!=null){Panel importArea=new Panel {Dock=DockStyle.Fill,Padding=new Padding(24,12,24,0),Margin=Padding.Empty};MediaImportPanel importCard=new MediaImportPanel(importer);importCard.HeightNeeded=height=>shell.RowStyles[0].Height=height;shell.RowStyles[0].Height=importCard.DesiredHeight;importArea.Controls.Add(importCard);shell.Controls.Add(importArea,0,0);}
+        TableLayoutPanel layout=new TableLayoutPanel {Dock=DockStyle.Fill,Padding=new Padding(24,12,24,12),ColumnCount=1,RowCount=6,Margin=Padding.Empty};shell.Controls.Add(layout,0,1);
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute,50));layout.RowStyles.Add(calendarRow);layout.RowStyles.Add(new RowStyle(SizeType.Absolute,31));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,26));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,42));
         TableLayoutPanel toolbar=new TableLayoutPanel {Dock=DockStyle.Fill,ColumnCount=3,RowCount=1,Margin=Padding.Empty};toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,165));toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,112));
         search.Margin=new Padding(0,0,12,12);Theme.Cue(search,"Search history");date.Dock=DockStyle.Fill;date.Margin=new Padding(0,0,10,12);resetDate.Dock=DockStyle.Fill;resetDate.Margin=new Padding(0,0,0,12);resetDate.Visible=false;toolbar.Controls.Add(search,0,0);toolbar.Controls.Add(date,1,0);toolbar.Controls.Add(resetDate,2,0);layout.Controls.Add(toolbar,0,0);
         calendarPanel.Controls.Add(calendar);layout.Controls.Add(calendarPanel,0,1);layout.Controls.Add(count,0,2);layout.Controls.Add(list,0,3);layout.Controls.Add(feedback,0,4);

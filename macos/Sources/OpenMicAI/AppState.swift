@@ -19,6 +19,12 @@ import OpenMicCore
     @Published var modelBusy = false
     @Published var capturingShortcut = false
     @Published var message = ""
+    @Published var importBusy = false
+    @Published var importName = ""
+    @Published var importSource = ""
+    @Published var importResult = ""
+    @Published var importStatus = ""
+    private var importTask: Task<Void, Never>?
     let root: URL
     let models: LocalModels
     let hotkey = Hotkey()
@@ -62,14 +68,14 @@ import OpenMicCore
     }
     func copy(_ text: String) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text, forType: .string); message = "Copied" }
     func loadModels(download: Bool) async {
-        guard !modelBusy, phase != "recording", phase != "ai", phase != "transcribing" else { return }
+        guard !modelBusy, !importBusy, phase != "recording", phase != "ai", phase != "transcribing" else { return }
         modelBusy = true; defer { modelBusy = false }
         do { try await models.load(preferences, download: download) } catch { status = error.localizedDescription }
     }
     func shortcut() {
         if phase == "recording" { if recordingPreferences.recordingMode != .hold { finishRecording() }; return }
         if phase == "actions" { startRecording(instruction: true); return }
-        guard phase != "ai", phase != "transcribing", !modelBusy else { return }
+        guard phase != "ai", phase != "transcribing", !modelBusy, !importBusy else { return }
         guard models.ready else { message = "Please download models from Settings first."; page = "Settings"; section = "Models"; showMain(); return }
         target = FocusTarget.capture()
         if target?.password == true { message = "Choose a text box outside a password field."; return }
@@ -182,5 +188,44 @@ import OpenMicCore
         }
     }
     func cancelShortcut() { if let shortcutMonitor { NSEvent.removeMonitor(shortcutMonitor) }; shortcutMonitor = nil; capturingShortcut = false; hotkey.capturing = false }
-    func shutdown() { cancel(); cancelShortcut(); models.shutdown() }
+    func importFile(_ url: URL, edit: Bool) {
+        guard !importBusy else { return }
+        guard !modelBusy, phase == "idle" || phase == "result", models.ready else { importStatus = "Finish the current action and load models in Settings first."; return }
+        let prefs = preferences, words = vocabulary
+        importBusy = true; importName = url.lastPathComponent; importSource = ""; importResult = ""; importStatus = "Reading audio…"
+        importTask = Task {
+            var complete = false
+            defer {
+                if !importSource.isEmpty { addHistory(source: importSource, result: importResult, action: "Imported file\(complete ? "" : " (partial)") · \(importName)") }
+                importBusy = false; importTask = nil
+            }
+            do {
+                try await MediaFile.read(url) { [weak self] chunk in
+                    guard let self else { throw CancellationError() }
+                    try Task.checkCancellation()
+                    let text = chunk.hasSound ? try await self.models.transcribe(chunk.wav, prompt: words.map(\.written).joined(separator: ", ")) : ""
+                    try Task.checkCancellation()
+                    try await self.acceptImport(text, chunk: chunk)
+                }
+                if importSource.isEmpty { importStatus = "No speech found."; return }
+                if edit && prefs.style != .raw {
+                    importStatus = "Applying \(prefs.style.rawValue)…"
+                    var corrected = importSource
+                    for word in words where !word.heard.isEmpty { corrected = corrected.replacingOccurrences(of: "(?i)\\b\(NSRegularExpression.escapedPattern(for: word.heard))\\b", with: NSRegularExpression.escapedTemplate(for: word.written), options: .regularExpression) }
+                    var edited = [String]()
+                    for part in MediaText.parts(corrected) { try Task.checkCancellation(); edited.append(try await models.transform(part, action: "Dictate", preferences: prefs)) }
+                    importResult = edited.joined(separator: "\n\n")
+                }
+                try Task.checkCancellation(); complete = true; importStatus = "Ready to copy"
+            } catch is CancellationError { importResult = importSource; importStatus = "Cancelled" }
+            catch { importResult = importSource; importStatus = Task.isCancelled ? "Cancelled" : "Could not finish: \(error.localizedDescription)" }
+        }
+    }
+    private func acceptImport(_ text: String, chunk: MediaChunk) throws {
+        importSource = MediaText.join(importSource, text, overlap: chunk.overlap); importResult = importSource
+        guard importSource.count <= 1_000_000 else { throw MicError.message("Transcript is too long. Import a shorter file.") }
+        let time = Int(chunk.seconds); importStatus = String(format: "Transcribing · %02d:%02d:%02d", time / 3600, (time / 60) % 60, time % 60)
+    }
+    func cancelImport() { importTask?.cancel() }
+    func shutdown() { cancelImport(); cancel(); cancelShortcut(); models.shutdown() }
 }

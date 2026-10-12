@@ -84,13 +84,18 @@ public sealed class FlowContext : ApplicationContext {
     readonly System.Windows.Forms.Timer health=new System.Windows.Forms.Timer {Interval=30000};
     DictationSession session;
     TextActionSession actionSession;
-    bool Busy {get{return session!=null||actionSession!=null;}}
+    readonly MediaImportController importer=new MediaImportController();
+    bool Busy {get{return session!=null||actionSession!=null||importer.Busy;}}
     string lastResult="",lastRaw="";
     bool exiting,booting;
     public FlowContext(string directory,bool openWindow=false,EventWaitHandle reopen=null) {
         root=directory;settings=Settings.Load(root);history=new HistoryStore(root);personalization=new PersonalizationStore(root);usage=new UsageStore(root);
         ui=SynchronizationContext.Current??new WindowsFormsSynchronizationContext();
-        holdMouse=new HoldMouseInput(ui);holdMouse.CanStart=()=>!exiting&&!ShortcutWindow.Capturing&&actionSession==null&&(session==null||!session.Stopped)&&models!=null&&models.Alive;
+        importer.CanStart=()=>!exiting&&!Busy&&!booting&&models!=null&&models.Alive;
+        importer.Preferences=()=>new JavaScriptSerializer().Deserialize<Settings>(new JavaScriptSerializer().Serialize(settings));importer.Rules=()=>personalization.Snapshot();
+        importer.Transcribe=(pcm,vocabulary,token)=>models.Transcribe(pcm,vocabulary,token);importer.Rewrite=(text,prefs,vocabulary,token)=>models.Rewrite(text,prefs.Style,prefs.Custom,token,vocabulary,prefs.Cleanup,prefs.PolishReworded);
+        importer.Save=(source,result,mode)=>{if(exiting)return;history.Add(source,result,mode);lastRaw=source;lastResult=result;copyResult.Enabled=copyRaw.Enabled=true;};
+        holdMouse=new HoldMouseInput(ui);holdMouse.CanStart=()=>!exiting&&!importer.Busy&&!ShortcutWindow.Capturing&&actionSession==null&&(session==null||!session.Stopped)&&models!=null&&models.Alive;
         holdMouse.Down=()=>{if(Hotkey.Mouse(settings.Shortcut)){Toggle();if(settings.RecordingMode=="Hold to talk")heldSession=session;}else if(session==null&&CanDictate()){Begin(false);heldSession=session;}};holdMouse.Up=()=>{DictationSession current=heldSession;heldSession=null;if(current!=null&&session==current&&!current.Stopped)Finish(current);};
         shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;
         shortcut.Toggle=KeyboardToggle;shortcut.Released=KeyboardRelease;shortcut.Cancel=Cancel;pill.Cancel=Cancel;pill.CopyResult=Copy;pill.Release=()=>{if(session!=null&&!session.Stopped)Finish(session);};pill.RecordingMode=RecordingModes.Normalize(settings.RecordingMode);
@@ -157,7 +162,7 @@ public sealed class FlowContext : ApplicationContext {
     void SavePreferences(){try{settings.Save(root);}catch(Exception error){Notify("Could not save preferences: "+error.Message);}}
     void ConfigureStartup(){using(Microsoft.Win32.RegistryKey key=Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")){if(settings.LaunchAtLogin)key.SetValue("Open Mic AI","\""+Application.ExecutablePath+"\" --background");else key.DeleteValue("Open Mic AI",false);key.DeleteValue("LocalFlow",false);}}
     void ApplySettings(Settings value){settings=value;shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;pill.RecordingMode=RecordingModes.Normalize(settings.RecordingMode);try{holdMouse.Configure(Hotkey.Mouse(settings.Shortcut)?settings.Shortcut:settings.HoldMouse);settings.Save(root);ConfigureStartup();}catch(Exception error){Notify("Could not apply settings: "+error.Message);}pill.Persistent=settings.ShowBar;if(!Busy){if(pill.Persistent)pill.ShowIdle();else pill.Conceal();}SetStatus(models!=null&&models.Alive?"Ready · "+settings.Shortcut:"Models not ready");}
-    void EnsureHub(){if(hub!=null&&!hub.IsDisposed)return;hub=new HubWindow(history,personalization,usage,()=>settings,ApplySettings,CreateModelWindow,shortcut.Choices,shortcut.EditLabel);hub.FormClosed+=(s,e)=>hub=null;}
+    void EnsureHub(){if(hub!=null&&!hub.IsDisposed)return;hub=new HubWindow(history,personalization,usage,()=>settings,ApplySettings,CreateModelWindow,shortcut.Choices,shortcut.EditLabel,importer);hub.FormClosed+=(s,e)=>hub=null;}
     [System.Runtime.InteropServices.DllImport("user32.dll")]static extern bool ShowWindow(IntPtr window,int command);
     void ShowApp(){if(exiting)return;EnsureHub();hub.SetStatus(status.Text);hub.Show();if(hub.WindowState==FormWindowState.Minimized)hub.WindowState=FormWindowState.Normal;ShowWindow(hub.Handle,5);hub.BringToFront();hub.Activate();}
     void OpenHub(string page){if(exiting)return;if(Busy){Notify("Finish or cancel the current action first.");return;}EnsureHub();hub.Navigate(page);ShowApp();}
@@ -167,7 +172,7 @@ public sealed class FlowContext : ApplicationContext {
     void OpenModels(){OpenHub("Models");}
     ModelWindow CreateModelWindow(){ModelWindow window=new ModelWindow(root,settings,specs??ComputerSpecs.Detect());window.CanApply=()=>!Busy&&!booting;window.ApplyModels=async pair=>{settings.Speech=pair.Speech.Name;settings.Text=pair.Text.Name;SavePreferences();await BootModels();return models!=null&&models.Alive;};return window;}
     static string ApplicationName(IntPtr window){try{uint id;Native.GetWindowThreadProcessId(window,out id);using(Process process=Process.GetProcessById((int)id))return process.ProcessName;}catch{return "Other";}}
-    bool CanDictate(){if(actionSession!=null){Notify("Finish or cancel AI tools first.");return false;}if(models==null||!models.Alive){Notify(models==null?"Please download models from Settings first.":"Models are not ready. Wait for Ready or use Reload and warm up models.");return false;}return true;}
+    bool CanDictate(){if(importer.Busy){Notify("Finish or cancel the file import in History first.");return false;}if(actionSession!=null){Notify("Finish or cancel AI tools first.");return false;}if(models==null||!models.Alive){Notify(models==null?"Please download models from Settings first.":"Models are not ready. Wait for Ready or use Reload and warm up models.");return false;}return true;}
     void KeyboardToggle(){Toggle();if(settings.RecordingMode=="Hold to talk"&&session!=null&&!session.Stopped)keyboardHeld=session;}
     void KeyboardRelease(){DictationSession held=keyboardHeld;keyboardHeld=null;if(held!=null&&session==held&&!held.Stopped)Finish(held);}
     void Toggle(){if(session!=null){if(!session.Stopped)Finish(session);return;}if(actionSession!=null){if(!actionSession.Processing)SpeakInstruction();return;}if(CanDictate())Begin(false);}
@@ -269,7 +274,7 @@ public sealed class FlowContext : ApplicationContext {
     }
     [System.Runtime.InteropServices.DllImport("user32.dll",EntryPoint="GetClipboardSequenceNumber")]static extern int ClipboardSequence();
     void Cancel(){TextActionSession action=actionSession;if(action!=null){actionSession=null;action.Cancel.Cancel();if(!action.Processing)action.Dispose();}DictationSession current=session;if(current!=null){current.Cancel.Cancel();current.Stop();session=null;}if(action==null&&current==null)return;shortcut.ListenForEscape(false);pill.Conceal();SetStatus("Ready · "+settings.Shortcut);}
-    protected override void ExitThreadCore(){exiting=true;if(reopenWait!=null)reopenWait.Unregister(null);pill.Persistent=false;Cancel();holdMouse.Dispose();if(hub!=null)hub.Close();history.FlushAsync().GetAwaiter().GetResult();personalization.FlushAsync().GetAwaiter().GetResult();usage.FlushAsync().GetAwaiter().GetResult();level.Dispose();health.Dispose();Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;shortcut.Dispose();pill.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();if(models!=null)models.Dispose();base.ExitThreadCore();}
+    protected override void ExitThreadCore(){exiting=true;importer.Cancel();if(reopenWait!=null)reopenWait.Unregister(null);pill.Persistent=false;Cancel();holdMouse.Dispose();if(hub!=null)hub.Close();history.FlushAsync().GetAwaiter().GetResult();personalization.FlushAsync().GetAwaiter().GetResult();usage.FlushAsync().GetAwaiter().GetResult();level.Dispose();health.Dispose();Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;shortcut.Dispose();pill.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();if(models!=null)models.Dispose();base.ExitThreadCore();}
 }
 
 public static class Program {

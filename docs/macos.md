@@ -34,6 +34,13 @@ Selected-text actions use macOS accessibility. A changed selection, password
 field, read-only control, or unsupported app is not automatically replaced.
 Translation and summary stay on the card. **Copy** is the fallback.
 
+In **History → Import file**, choose a local audio or video recording. The first
+audio track is decoded with macOS' installed codecs and transcribed locally.
+**Use writing style** optionally applies your current AI style. Use Original or
+Copy to retrieve either text, or Cancel to stop and keep a partial transcript.
+Long recordings run in chunks. No audio copy is saved, no automatic paste occurs,
+and imported audio does not affect dictation WPM. No speaker labels are generated.
+
 ## Build
 
 Install Xcode command-line tools, CMake, and Git, then run:
@@ -42,7 +49,7 @@ Install Xcode command-line tools, CMake, and Git, then run:
 bash macos/build.sh
 ```
 
-This runs Swift tests, compiles the app and pinned local engines, and creates
+This runs Swift word-guard and synthetic media-decoder tests, compiles the app and pinned local engines, and creates
 `macos/dist/OpenMicAI-macOS-<architecture>.zip`. Weights are downloaded through
 the app. Build once on Apple Silicon and once on Intel to produce both packages;
 the GitHub Actions workflow does this on separate native runners.

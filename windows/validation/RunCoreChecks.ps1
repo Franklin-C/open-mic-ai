@@ -6,7 +6,7 @@ $arguments=@('/nologo','/target:exe','/platform:x64','/optimize+','/main:CoreChe
 foreach($name in @('System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll','System.Web.Extensions.dll','System.Net.Http.dll','System.IO.Compression.dll','System.IO.Compression.FileSystem.dll','WPF\UIAutomationClient.dll','WPF\UIAutomationTypes.dll')){$arguments+='/reference:'+(Join-Path $framework $name)}
 $sources=@(Get-ChildItem -LiteralPath (Join-Path $appRoot 'src') -Filter '*.cs' | ForEach-Object {$_.FullName})
 try {
-    & $compiler @arguments @sources (Join-Path $PSScriptRoot 'CoreChecks.cs') (Join-Path $PSScriptRoot 'PolishRetryChecks.cs')
+    & $compiler @arguments @sources (Join-Path $PSScriptRoot 'CoreChecks.cs') (Join-Path $PSScriptRoot 'PolishRetryChecks.cs') (Join-Path $PSScriptRoot 'MediaChecks.cs')
     if($LASTEXITCODE-ne 0){throw 'Core test compilation failed'}
     & $testExe
     if($LASTEXITCODE-ne 0){throw 'Core tests failed'}

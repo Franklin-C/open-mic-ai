@@ -15,7 +15,7 @@ Both provide independently chosen local models, one-shortcut dictation and text
 actions, custom instructions, vocabulary, snippets, history, and a floating bar.
 The word guard is in [Windows Formatting.cs](../windows/src/Formatting.cs) and
 [Mac Core.swift](../macos/Sources/OpenMicCore/Core.swift), with automated checks.
-See the [platform checklist](../README.md#features) and
+See the [feature comparison](../README.md#features) and
 [verification scope](verification.json).
 
 Windows has native fixture and local-model integration results. Mac builds and
@@ -26,8 +26,10 @@ the Windows picker offers 15 language choices and accepts other language names;
 Mac has a translation-language field. See
 [Windows text actions](../windows/src/TextActions.cs) and
 [Mac translation prompts](../macos/Sources/OpenMicCore/Core.swift).
-There is no mobile app, Linux app, meeting recorder, audio/video import or cloud
-provider option, and the app uses one global style. The app source is
+Audio/video import uses the operating system's media decoder and the selected
+local speech model, with optional AI formatting. Codec support varies by platform.
+There is no mobile app, Linux app, meeting recorder or cloud provider option,
+and the app uses one global style. The app source is
 [MIT licensed](../LICENSE).
 
 ### What Open Mic AI offers
@@ -43,11 +45,10 @@ Mail; VoiceInk can use local custom prompts through a separate Ollama setup.
 ### What other apps offer that Open Mic AI does not
 
 Wispr Flow, OpenWhispr and Superwhisper document meeting capture with speaker
-labels. OpenWhispr, Superwhisper and VoiceInk import recorded media. Wispr Flow,
+labels. Wispr Flow,
 Superwhisper and VoiceInk can switch styles or modes by app. All four have cloud
 processing, mobile apps and multilingual speech-model choices. OpenWhispr also
-has a Linux app. These differences are represented as separate rows in the
-README; supporting official sources appear under each product below.
+has a Linux app. Supporting official sources appear under each product below.
 
 ## Wispr Flow
 

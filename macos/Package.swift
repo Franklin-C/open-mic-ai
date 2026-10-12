@@ -7,6 +7,7 @@ let package = Package(
     targets: [
         .target(name: "OpenMicCore"),
         .executableTarget(name: "OpenMicAI", dependencies: ["OpenMicCore"], resources: [.process("Resources")]),
-        .testTarget(name: "OpenMicCoreTests", dependencies: ["OpenMicCore"])
+        .testTarget(name: "OpenMicCoreTests", dependencies: ["OpenMicCore"]),
+        .testTarget(name: "MediaFileTests", dependencies: ["OpenMicAI"])
     ]
 )

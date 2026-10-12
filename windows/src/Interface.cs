@@ -31,8 +31,9 @@ public sealed class HubWindow : Form {
     readonly Label heading=new Label {Dock=DockStyle.Top,Height=72,Font=new Font("Segoe UI",23,FontStyle.Bold),Padding=new Padding(28,21,0,0)};
     readonly Label status=new Label {Dock=DockStyle.Bottom,Height=92,Padding=new Padding(20,12,12,0),ForeColor=Theme.Muted,Font=new Font("Segoe UI",9)};
     readonly FlowLayoutPanel navigation=new FlowLayoutPanel {Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,Padding=new Padding(14,18,14,0)};
-    Form page;
-    public HubWindow(HistoryStore historyStore,PersonalizationStore personalStore,UsageStore statistics,Func<Settings> settings,Action<Settings> applySettings,Func<ModelWindow> models,string[] choices,string editLabel) {
+    Form page;readonly MediaImportController importer;
+    public HubWindow(HistoryStore historyStore,PersonalizationStore personalStore,UsageStore statistics,Func<Settings> settings,Action<Settings> applySettings,Func<ModelWindow> models,string[] choices,string editLabel,MediaImportController fileImport=null) {
+        importer=fileImport;
         history=historyStore;personalization=personalStore;usage=statistics;getSettings=settings;saveSettings=applySettings;modelFactory=models;shortcuts=choices;editShortcut=editLabel;
         Text=Brand.Name;Icon=Brand.CreateIcon();ClientSize=new Size(1100,800);MinimumSize=new Size(950,740);StartPosition=FormStartPosition.CenterScreen;Font=new Font("Segoe UI",10);BackColor=Color.White;ForeColor=Theme.Ink;
         Panel sidebar=new Panel {Dock=DockStyle.Fill,BackColor=Color.White,Margin=Padding.Empty};sidebar.Paint+=(s,e)=>{using(Pen line=new Pen(Theme.Line))e.Graphics.DrawLine(line,sidebar.Width-1,0,sidebar.Width-1,sidebar.Height);};
@@ -49,7 +50,7 @@ public sealed class HubWindow : Form {
         foreach(Button button in navigation.Controls.OfType<Button>()){bool active=button.Text==name;button.BackColor=active?Color.FromArgb(255,240,242):Color.White;button.ForeColor=active?Theme.Accent:Theme.Ink;}
         switch(name) {
             case "Home":page=new DashboardWindow(history,usage,()=>Navigate("History"));break;
-            case "History":page=new HistoryWindow(history,getSettings().SaveHistory,enabled=>{Settings next=getSettings();next.SaveHistory=enabled;saveSettings(next);});break;
+            case "History":page=new HistoryWindow(history,getSettings().SaveHistory,enabled=>{Settings next=getSettings();next.SaveHistory=enabled;saveSettings(next);},importer);break;
             case "Vocabulary":page=new PersonalizationWindow(personalization,false);break;
             case "Snippets":page=new PersonalizationWindow(personalization,true);break;
             case "Settings":SettingsWindow settings=new SettingsWindow(getSettings(),shortcuts,null,editShortcut,modelFactory,getSettings,usage.Data.Apps.Select(a=>a.Name).ToArray(),()=>usage.Clear());settings.Saved=saveSettings;if(section!=null)settings.SelectSection(section);page=settings;break;

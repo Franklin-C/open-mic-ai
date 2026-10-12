@@ -8,5 +8,6 @@ public static class CoreChecks {
         using(Models models=new Models(root))PolishRetryChecks.Run(models,(ok,name)=>{Console.WriteLine((ok?"PASS ":"FAIL ")+name);if(!ok)throw new Exception(name);}).GetAwaiter().GetResult();
         Settings value=new Settings();if(value.PolishReworded)throw new Exception("My words must be the default");value.PolishReworded=true;StyleOptions.Apply(value,"Polish");value.Save(root);Settings saved=Settings.Load(root);if(!saved.PolishReworded||!StyleRouting.Resolve(saved,"fixture").PolishReworded)throw new Exception("Reworded preference must persist and reach routing");
         Console.WriteLine("PASS Polish wording preference persists and reaches routing");
+        MediaChecks.Run(root).GetAwaiter().GetResult();
     }catch(Exception error){Console.WriteLine(error);Environment.ExitCode=1;}finally{foreach(string file in Directory.GetFiles(root))File.Delete(file);Directory.Delete(root);}}
 }

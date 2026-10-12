@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import OpenMicCore
 
 @MainActor struct MainView: View {
@@ -103,9 +104,28 @@ struct ActivityView: View {
     @State private var search = ""
     @State private var date = Date()
     @State private var filterDate = false
+    @State private var useStyle = true
+    @State private var original = false
     var entries: [HistoryEntry] { state.history.filter { (search.isEmpty || $0.result.localizedCaseInsensitiveContains(search) || $0.source.localizedCaseInsensitiveContains(search)) && (!filterDate || Calendar.current.isDate($0.date, inSameDayAs: date)) } }
     var body: some View {
         VStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Button("Import file") {
+                        let panel = NSOpenPanel(); panel.title = "Import audio or video"; panel.canChooseDirectories = false; panel.allowsMultipleSelection = false
+                        panel.beginSheetModal(for: NSApp.keyWindow ?? NSApp.mainWindow!) { response in
+                            if response == .OK, let url = panel.url { original = false; state.importFile(url, edit: useStyle) }
+                        }
+                    }.buttonStyle(.borderedProminent).disabled(state.importBusy)
+                    Toggle("Use writing style", isOn: $useStyle).disabled(state.importBusy)
+                    if state.importBusy { ProgressView().controlSize(.small); Button("Cancel") { state.cancelImport() } }
+                    Spacer()
+                    if !state.importSource.isEmpty { Button("Copy") { state.copy(original ? state.importSource : state.importResult) }; Button(original ? "Result" : "Original") { original.toggle() } }
+                }
+                Text(state.importName.isEmpty ? "Audio or video · Processed locally" : "\(state.importName) · \(state.importStatus)").font(.caption).foregroundStyle(.secondary)
+                if state.importName.isEmpty && !state.importStatus.isEmpty { Text(state.importStatus).font(.caption).foregroundStyle(.secondary) }
+                if !state.importSource.isEmpty { ScrollView { Text(original ? state.importSource : state.importResult).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(height: 90) }
+            }.padding(16).background(Color(white: 0.985), in: RoundedRectangle(cornerRadius: 12))
             HStack { TextField("Search history", text: $search).textFieldStyle(.roundedBorder); Toggle("Date", isOn: $filterDate); if filterDate { DatePicker("", selection: $date, displayedComponents: .date).labelsHidden() } }
             ScrollView { LazyVStack(spacing: 12) { if entries.isEmpty { Text("No results yet").foregroundStyle(.secondary).padding(30) }; ForEach(entries) { row in HistoryRow(state: state, entry: row) } } }
         }

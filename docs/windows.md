@@ -34,6 +34,16 @@ Home shows local usage and the five newest dictations. History has search, date
 filtering, Copy and Original buttons. Snippets and vocabulary use inline editors.
 All settings and model downloads stay inside the app.
 
+In **History → Import file**, choose a local recording, or drop one onto the import
+area. Audio and video use Windows' installed codecs; WAV, MP3, M4A and MP4 are
+common supported formats. The first audio track is transcribed with your selected
+speech model. **Use writing style** optionally applies your current AI style.
+Progress, Cancel, Original and Copy stay inside History. Long recordings run in
+bounded chunks; cancelled or failed imports retain a partial transcript. Imported
+files are not automatically pasted into another app or included in dictation WPM.
+No audio copy is saved. Windows editions without Media Foundation need the Media
+Feature Pack. Speaker labels are not generated.
+
 Closing the window keeps the tray app and models running. Double-click the tray
 icon, choose **Open app**, or launch the EXE again to reopen it. **Quit** unloads
 the models. Automatic paste may be blocked by elevated apps, unsupported custom
@@ -61,3 +71,5 @@ expect the default model files in `windows/models` and engines in `windows/runti
 `RunChecks.ps1` also expects a 16 kHz mono English WAV at
 `windows/validation/speech-fixture.wav`; supply a sample you are comfortable using
 for a local test. Audio fixtures and personal data are excluded from Git.
+The offline core suite also generates synthetic audio to check media decoding,
+resampling, chunk boundaries, cancellation and partial-result preservation.
