@@ -88,61 +88,58 @@ image shows one frame of the recording and processing animations.
 
 ## Features
 
-Checked **October 12, 2026** against official product documentation. **✓** means
-available; **P** means implemented in our Mac preview and awaiting hands-on
-testing; **?** means not confirmed in the linked sources, not necessarily absent.
-Competitor features can depend on platform, plan, model, and configuration.
+**✓** Included · **✕** Unavailable · **-** Not documented. Checked October 12, 2026.
 
-| Feature | Open Mic AI Windows | Open Mic AI Mac | [Wispr Flow](https://wisprflow.ai/) | [OpenWhispr](https://openwhispr.com/) | [Superwhisper](https://superwhisper.com/) | [VoiceInk](https://tryvoiceink.com/) |
-| --- | :---: | :---: | :---: | :---: | :---: | :---: |
-| Desktop platforms | Windows | macOS preview | Windows, macOS | Windows, macOS, Linux | Windows, macOS | macOS |
-| Dictate across apps / automatic paste | ✓ | P | ✓ | ✓ | ✓ | ✓ |
-| Offline speech recognition | ✓ | P | Cloud | ✓ | ✓ | ✓ |
-| Offline AI text processing | ✓ | P | Cloud | ✓ | Message / Mail¹ | Refine / Ollama² |
-| Choose speech and language models separately | ✓ | P | ? | ✓ | ✓ | ✓ |
-| In-app local model downloads | ✓ | P | Cloud | ✓ | ✓ | ✓ |
-| Clean up and format dictation | ✓ | P | ✓ | ✓ | ✓ | ✓ |
-| Custom written instructions | ✓ | P | ? | ? | ✓ | ✓ |
-| Use selected text with spoken AI instructions | ✓ | P | Command Mode | Voice agent | Custom mode | Context + prompt |
-| Personal vocabulary | ✓ | P | ✓ | ✓ | ✓ | ✓ |
-| Spoken snippets / text expansion | ✓ | P | ✓ | ✓ | Replacements | Replacements |
-| Saved dictation results | ✓ | P | ✓ | ✓ | ✓ | ✓ |
-| Deterministic no-added-word check in formatting mode³ | ✓ | P | ? | ? | ? | ? |
-| Speech languages | English | English | Multiple | Multiple | Multiple | Multiple |
-| Published app source | MIT | MIT | ? | MIT | ? | GPL-3.0 |
-
-¹ Superwhisper's local S1-mini runs only in Message and Mail; Custom modes need
-an online language model. ² VoiceInk Refine provides fixed local cleanup; Ollama
-can support prompts with additional setup. ³ Open Mic AI's **My words** rejects
-new or substituted words, while allowing punctuation, formatting, filler removal
-and corrections. This checks wording, not perfect recognition or meaning.
-
-See the [comparison sources and limitations](docs/comparison.md) for the evidence
-behind this table. This is a feature comparison, not an accuracy or speed ranking.
+| [Feature](docs/comparison.md) | **Open Mic AI** | [Wispr Flow](https://wisprflow.ai/) | [OpenWhispr](https://openwhispr.com/) | [Superwhisper](https://superwhisper.com/) | [VoiceInk](https://tryvoiceink.com/) |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| Desktop apps | Windows; Mac preview | Windows, Mac | Windows, Mac, Linux | Windows, Mac | Mac |
+| Dictate into a text box and paste automatically | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Recognize speech offline | ✓ | ✕ | ✓ | ✓ | ✓ |
+| Clean up and format text with offline AI | ✓ | ✕ | ✓ | Message and Mail modes | Refine or local Ollama |
+| Run custom AI instructions offline | ✓ | ✕ | Translation prompts | ✕ | Local Ollama setup |
+| Choose speech and language models independently | ✓ | - | ✓ | ✓ | ✓ |
+| Download local models inside the app | ✓ | ✕ | ✓ | ✓ | ✓ |
+| Custom AI instructions | ✓ | Spoken commands | Translation prompts | ✓ | ✓ |
+| Highlight text, then say how to rewrite it | ✓ | ✓ Paid Command Mode | ✓ Voice agent | ✓ Custom mode | ✓ Context and prompt setup |
+| Translate text into other languages | ✓ Multiple languages | - | ✓ | ✓ Custom mode | Custom prompt |
+| Dictation speech languages | English | Multiple | Multiple | Multiple | Multiple |
+| Personal vocabulary and spelling corrections | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Expand a spoken phrase into saved text | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Save and revisit dictation results | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Validate that formatting adds no new words | ✓ My words | - | - | - | - |
+| Unlimited dictation and AI editing for free | ✓ | Paid plan | ✓ Local mode | Paid AI features | Build from source |
+| Open-source app | ✓ MIT | - | ✓ MIT | - | ✓ GPL-3.0 |
+| Automatically choose a style for each app | ✕ | ✓ | - | ✓ | ✓ |
+| Record meetings with speaker labels | ✕ | ✓ | ✓ | ✓ | - |
+| Transcribe imported audio or video files | ✕ | - | ✓ | ✓ Pro | ✓ |
+| Optional cloud processing | ✕ | ✓ | ✓ | ✓ | ✓ |
+| Mobile apps | ✕ | iOS, Android | iOS | iOS, Android | iOS |
+| Linux app | ✕ | ✕ | ✓ | Planned | ✕ |
 
 <details>
 <summary><strong>Full Open Mic AI platform checklist</strong></summary>
 
-| Feature | Windows | Mac preview |
-| --- | :---: | :---: |
-| Background tray / menu-bar app | ✓ | ✓ |
-| Local English speech-to-text and local language model | ✓ | ✓ |
-| Independent model selectors and in-app downloads | ✓ | ✓ |
-| Models stay loaded and ready | ✓ | ✓ |
-| Custom keyboard shortcut capture | ✓ | ✓ |
-| Click, hold, or automatic recording | ✓ | ✓ |
-| Mouse 4 / Mouse 5 shortcut | ✓ | — |
-| Draggable floating bar with provisional transcript | ✓ | ✓ |
-| AI processing indicator and Copy fallback | ✓ | ✓ |
-| Selected-text rewrite, translate and summarize | ✓ | ✓ |
-| Spoken instructions for selected text | ✓ | ✓ |
-| Guarded automatic paste / replacement | ✓ | ✓ |
-| Local history, search and date filter | ✓ | ✓ |
-| Home statistics and five recent dictations | ✓ | ✓ |
-| Activity dates, word counts and month labels | ✓ | ✓ |
-| Spoken snippets and personal vocabulary | ✓ | ✓ |
-| Start at Windows sign-in, sounds and playback mute | ✓ | — |
-| Resumable model downloads | ✓ | — |
+| Feature | Open Mic AI |
+| --- | :---: |
+| Background tray / menu-bar app | ✓ |
+| Local English speech-to-text and local language model | ✓ |
+| Translate selected text into multiple languages | ✓ |
+| Independent model selectors and in-app downloads | ✓ |
+| Models stay loaded and ready | ✓ |
+| Custom keyboard shortcut capture | ✓ |
+| Click, hold, or automatic recording | ✓ |
+| Mouse 4 / Mouse 5 shortcut | Windows |
+| Draggable floating bar with provisional transcript | ✓ |
+| AI processing indicator and Copy fallback | ✓ |
+| Selected-text rewrite, translate and summarize | ✓ |
+| Spoken instructions for selected text | ✓ |
+| Guarded automatic paste / replacement | ✓ |
+| Local history, search and date filter | ✓ |
+| Home statistics and five recent dictations | ✓ |
+| Activity dates, word counts and month labels | ✓ |
+| Spoken snippets and personal vocabulary | ✓ |
+| Start at sign-in, sounds and playback mute | Windows |
+| Resumable model downloads | Windows |
 
 The checkmarks describe implemented features; Mac runtime compatibility still
 needs testing. See the [Windows guide](docs/windows.md), [Mac guide](docs/macos.md),

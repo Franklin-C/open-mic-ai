@@ -4,8 +4,9 @@ Checked October 12, 2026. The [README comparison](../README.md#features) uses
 official product pages, documentation, and source repositories. It compares
 desktop capabilities across each product's supported platforms, not identical
 plans or default configurations. A check does not mean every model or platform
-supports the feature. **?** means we did not verify it; it is not a claim that
-the feature is missing. No competing app was benchmarked in this project.
+supports the feature. **✓** means available, **✕** means unavailable, and **-**
+means not verified in the sources; a dash is not a claim that the feature is
+missing. Qualifiers stay in table cells. No competing app was benchmarked here.
 
 ## Open Mic AI
 
@@ -19,9 +20,34 @@ See the [platform checklist](../README.md#features) and
 
 Windows has native fixture and local-model integration results. Mac builds and
 tests passed on Apple Silicon and Intel runners; microphone, accessibility,
-audio-device changes and paste still need testing on real Macs. English speech
-only, no mobile app, no meeting recorder, and one global style are the current
-scope. The app source is [MIT licensed](../LICENSE).
+audio-device changes and paste still need testing on real Macs. Speech recognition
+currently uses English-only models. Text translation supports multiple languages:
+the Windows picker offers 15 language choices and accepts other language names;
+Mac has a translation-language field. See
+[Windows text actions](../windows/src/TextActions.cs) and
+[Mac translation prompts](../macos/Sources/OpenMicCore/Core.swift).
+There is no mobile app, Linux app, meeting recorder, audio/video import or cloud
+provider option, and the app uses one global style. The app source is
+[MIT licensed](../LICENSE).
+
+### What Open Mic AI offers
+
+Open Mic AI packages unlimited local dictation, custom AI editing, translation,
+and summary without an account, paid license or subscription. Its My words mode
+also validates that accepted formatting adds no new words. We did not find a
+documented equivalent word validator in the competitors' sources; the table uses
+dashes rather than claiming those apps cannot preserve wording. OpenWhispr also
+offers free local processing. Superwhisper's offline AI is limited to Message and
+Mail; VoiceInk can use local custom prompts through a separate Ollama setup.
+
+### What other apps offer that Open Mic AI does not
+
+Wispr Flow, OpenWhispr and Superwhisper document meeting capture with speaker
+labels. OpenWhispr, Superwhisper and VoiceInk import recorded media. Wispr Flow,
+Superwhisper and VoiceInk can switch styles or modes by app. All four have cloud
+processing, mobile apps and multilingual speech-model choices. OpenWhispr also
+has a Linux app. These differences are represented as separate rows in the
+README; supporting official sources appear under each product below.
 
 ## Wispr Flow
 
@@ -35,8 +61,11 @@ eligible plan access. Local history is configurable.
 - [Cloud transcription and local history controls](https://wisprflow.ai/privacy)
 - [Command Mode and access requirements](https://docs.wisprflow.ai/articles/4816967992-how-to-use-command-mode)
 
-We did not verify a public app-source license, user-selectable speech/LLM pair,
-custom written prompt editor, or deterministic no-added-word validator.
+Its unlimited dictation and Command Mode use paid access. The homepage documents
+per-app styles, mobile apps and meeting notes with speaker labels. We did not
+verify a public app-source license, user-selectable speech/LLM pair, custom
+written prompt editor, text translation, media import or deterministic word
+validator. The supported-platform list does not include Linux.
 
 ## OpenWhispr
 
@@ -51,11 +80,14 @@ and notes are retained. Speech languages depend on the selected engine.
 - [Independent cleanup model, including local processing](https://docs.openwhispr.com/help/dictation/cleanup)
 - [Vocabulary and snippets](https://docs.openwhispr.com/guides/custom-dictionary)
 - [Selected-text voice edits](https://docs.openwhispr.com/help/agent/voice-agent)
+- [Custom translation prompt, target languages and separate translation model](https://docs.openwhispr.com/help/dictation/translation)
+- [Free local processing](https://docs.openwhispr.com/guides/cloud-vs-local)
 - [Local AI reasoning and MIT source](https://github.com/OpenWhispr/openwhispr)
 
-We did not confirm a custom written prompt editor or a deterministic word guard
-from these sources. OpenWhispr also offers meetings, notes and cloud services
-beyond Open Mic AI's present scope.
+The translation workflow has a written prompt editor, including local processing;
+we have not generalized that to every cleanup or agent workflow. We did not
+confirm automatic per-app styles or a deterministic word guard. OpenWhispr also
+offers meetings, media import, speaker labels and an iOS app.
 
 ## Superwhisper
 
@@ -69,11 +101,15 @@ vocabulary replacements can expand short phrases.
 - [Model selection, downloads and text delivery](https://superwhisper.com/docs/get-started/choose-your-model)
 - [S1-mini restrictions](https://superwhisper.com/docs/models/language)
 - [Custom instructions and selected-text context](https://superwhisper.com/docs/modes/custom)
+- [Automatic app activation, translation and speaker labels](https://superwhisper.com/docs/modes/modes)
 - [Vocabulary and phrase expansion](https://superwhisper.com/docs/get-started/interface-vocabulary)
 - [History and results](https://superwhisper.com/docs/get-started/history)
+- [Free speech-only plan and paid AI/file transcription](https://superwhisper.com/docs/billing/plans)
 
 We did not verify a public app-source license or deterministic word guard.
-Features can require Pro access; Windows and macOS differ in some controls.
+Features can require Pro access; Windows and macOS differ in some controls. It
+offers iOS/Android apps, meeting capture and media import; Linux is listed as
+planned, not available.
 
 ## VoiceInk
 
@@ -88,13 +124,20 @@ source is GPL-3.0; buying the packaged app supports its development.
 - [Desktop scope, modes and text delivery](https://tryvoiceink.com/docs/introduction)
 - [Local cleanup and Refine limitations; Ollama alternative](https://tryvoiceink.com/docs/voiceink-refine)
 - [Custom prompts and selected text](https://tryvoiceink.com/docs/custom-prompts)
+- [Automatic app and website mode switching](https://tryvoiceink.com/docs/mode-triggers)
 - [Text expansion](https://tryvoiceink.com/docs/word-replacements)
 - [Saved results](https://tryvoiceink.com/docs/transcription-history)
 - [Multilingual local speech models](https://tryvoiceink.com/docs/local-models)
+- [Recorded media import](https://tryvoiceink.com/docs/transcribe-audio-files)
+- [iOS dictation](https://tryvoiceink.com/docs/quick-dictation)
+- [One-time purchase for the packaged Mac app](https://tryvoiceink.com/)
 - [Published app source and license](https://github.com/Beingpax/VoiceInk)
 
 We did not verify a deterministic word guard. Local speech alone does not make
 cloud enhancement offline, and Ollama needs a separately configured local service.
+The translation cell describes a custom-prompt workflow with a compatible model,
+not a dedicated built-in translation button. Its published desktop platforms do
+not include Linux. We did not confirm live meeting recording with speaker labels.
 
 ## Reading the table
 
