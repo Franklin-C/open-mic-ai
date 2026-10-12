@@ -17,8 +17,12 @@ build_engine() {
   cp "$checkout/build/bin/$target" "$runtime/$target"
   cp "$checkout/LICENSE" "$runtime/$name-LICENSE.txt"
 }
-build_engine whisper https://github.com/ggml-org/whisper.cpp.git d2a764c648779feb36d44363f212a29b00aad1af whisper-server
-build_engine llama https://github.com/ggml-org/llama.cpp.git 69ecae922d2b60c1fa8c590279f4e2099af75111 llama-server
+identity='whisper:d2a764c648779feb36d44363f212a29b00aad1af llama:69ecae922d2b60c1fa8c590279f4e2099af75111 portable-cpu-v1'
+if [[ ! -x "$runtime/whisper-server" || ! -x "$runtime/llama-server" || "$(cat "$runtime/revisions.txt" 2>/dev/null || true)" != "$identity" ]]; then
+  build_engine whisper https://github.com/ggml-org/whisper.cpp.git d2a764c648779feb36d44363f212a29b00aad1af whisper-server
+  build_engine llama https://github.com/ggml-org/llama.cpp.git 69ecae922d2b60c1fa8c590279f4e2099af75111 llama-server
+  printf '%s\n' "$identity" > "$runtime/revisions.txt"
+fi
 binary="$(swift build -c release --show-bin-path)"
 app="$PWD/dist/Open Mic AI.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/runtime"
@@ -27,6 +31,10 @@ cp -R "$binary/OpenMicAI_OpenMicAI.bundle" "$app/Contents/Resources/"
 cp Sources/OpenMicAI/Resources/models.json "$app/Contents/Resources/models.json"
 cp "$runtime/"* "$app/Contents/Resources/runtime/"
 cp Info.plist "$app/Contents/Info.plist"
+cp ../LICENSE "$app/Contents/Resources/OpenMicAI-LICENSE.txt"
+cp THIRD_PARTY_NOTICES.md "$app/Contents/Resources/THIRD_PARTY_NOTICES.md"
+cp licenses/*.txt "$app/Contents/Resources/"
+cp ../windows/licenses/Apache-2.0.txt "$app/Contents/Resources/Apache-2.0.txt"
 if [[ -f Sources/OpenMicAI/Resources/logo.png ]]; then
   iconset="$PWD/.build/OpenMicAI.iconset"; mkdir -p "$iconset"
   for size in 16 32 128 256 512; do
