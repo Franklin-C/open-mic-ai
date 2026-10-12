@@ -1,0 +1,41 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Windows app
+        shell: powershell
+        run: ./windows/Build.ps1
+      - name: Word guards and bounded repair tests
+        shell: powershell
+        run: ./windows/validation/RunCoreChecks.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenMicAI-Windows-source-build
+          path: windows/OpenMicAI.exe
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build, test and package native Mac app
+        run: bash macos/build.sh
+      - name: Check local engine executables
+        run: |
+          macos/.build/runtime/whisper-server --help
+          macos/.build/runtime/llama-server --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenMicAI-${{ matrix.runner }}
+          path: macos/dist/*.zip

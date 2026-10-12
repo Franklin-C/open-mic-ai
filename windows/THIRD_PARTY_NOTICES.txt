@@ -1,0 +1,62 @@
+LocalFlow uses the following locally installed components. The model files are
+quantized conversions of their named source models, not models trained by LocalFlow.
+
+Parakeet TDT 0.6B v2
+Creator: NVIDIA
+Source: https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2
+License: Creative Commons Attribution 4.0 International
+License text: https://creativecommons.org/licenses/by/4.0/legalcode
+GGUF conversion: mudler/parakeet-cpp-gguf
+https://huggingface.co/mudler/parakeet-cpp-gguf
+Modification: converted to GGUF and quantized to Q8_0 or Q4_K.
+
+parakeet.cpp
+Copyright (c) Ettore Di Giacinto and contributors
+Source: https://github.com/mudler/parakeet.cpp
+License: MIT; full text is in runtime/speech/LICENSE.
+
+Qwen3-4B-Instruct-2507
+Creator: Qwen, Alibaba Cloud
+Source: https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507
+License: Apache License 2.0
+License text: https://www.apache.org/licenses/LICENSE-2.0.txt
+GGUF conversion: Unsloth
+https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF
+Modification: converted to GGUF and quantized. The exact chosen quantization,
+source revision and checksum are recorded in package-manifest.json.
+
+Optional Compact rewrite model: Qwen3.5-2B
+Creator: Qwen, Alibaba Cloud
+Source: https://huggingface.co/Qwen/Qwen3.5-2B
+License: Apache License 2.0 (full text in licenses/Apache-2.0.txt).
+GGUF conversion: Unsloth
+https://huggingface.co/unsloth/Qwen3.5-2B-GGUF
+Modification: converted to GGUF and quantized to Q4_K_M.
+Pinned revisions and checksums for download choices are also recorded in
+model-catalog.json and the executable's built-in catalog.
+
+llama.cpp / ggml
+Copyright (c) 2023-2026 The ggml authors
+Source: https://github.com/ggml-org/llama.cpp
+License: MIT; full text is in runtime/text/LICENSE.
+
+LLVM OpenMP
+License: Apache 2.0 with LLVM exceptions.
+Full text is in runtime/text/LICENSE-LLVM-OpenMP.
+
+Windows and .NET Framework are operating system components and are not bundled.
+
+Evaluation data is excluded from the app package. Its public references and
+results are included in validation. LibriSpeech is by Vassil Panayotov, Guoguo
+Chen, Daniel Povey and Sanjeev Khudanpur, licensed CC BY 4.0:
+https://www.openslr.org/12/
+
+Optional language models: Qwen3-1.7B and Qwen3-8B
+Creator: Qwen, Alibaba Cloud
+Sources: https://huggingface.co/Qwen/Qwen3-1.7B
+https://huggingface.co/Qwen/Qwen3-8B
+License: Apache License 2.0 (full text in licenses/Apache-2.0.txt).
+GGUF conversions: https://huggingface.co/unsloth/Qwen3-1.7B-GGUF
+https://huggingface.co/unsloth/Qwen3-8B-GGUF
+Modification: converted to GGUF and quantized to Q4_K_M.
+Revisions, sizes and checksums are pinned in model-catalog.json.

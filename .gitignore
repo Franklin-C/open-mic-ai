@@ -1,0 +1,27 @@
+# User data, downloads and generated builds never belong in the source repo.
+.DS_Store
+.build/
+dist/
+runtime/
+models/
+*.exe
+*.dll
+*.dylib
+*.gguf
+*.bin
+*.partial
+*.log
+preferences.json*
+history.json*
+personalization.json*
+snippets.json*
+vocabulary.json*
+notes.json*
+usage.json*
+connection.json
+verification-result.json
+package-manifest.json
+.codex*/
+work/
+*.wav
+__pycache__/

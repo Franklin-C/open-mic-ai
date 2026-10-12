@@ -1,0 +1,62 @@
+{
+  "speech": [
+    {
+      "name": "ggml-base.en.bin",
+      "title": "Whisper Base English",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.en.bin",
+      "sha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+      "bytes": 147964211
+    },
+    {
+      "name": "ggml-small.en.bin",
+      "title": "Whisper Small English",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-small.en.bin",
+      "sha256": "c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d",
+      "bytes": 487614201
+    }
+  ],
+  "language": [
+    {
+      "name": "Qwen3-4B-Instruct-2507-Q3_K_S.gguf",
+      "title": "Qwen3 4B Instruct 2507 Q3 K S",
+      "url": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q3_K_S.gguf",
+      "sha256": "0ce20058cc0ed6b6c9213bb383589327e458c12ffce0842fc96867042d669c75",
+      "bytes": 1886997600
+    },
+    {
+      "name": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "title": "Qwen3 4B Instruct 2507 Q4 K M",
+      "url": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "sha256": "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
+      "bytes": 2497281120
+    },
+    {
+      "name": "Qwen3.5-2B-Q4_K_M.gguf",
+      "title": "Qwen3.5 2B Q4 K M",
+      "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/f6d5376be1edb4d416d56da11e5397a961aca8ae/Qwen3.5-2B-Q4_K_M.gguf",
+      "sha256": "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223",
+      "bytes": 1280835840
+    },
+    {
+      "name": "Qwen3-1.7B-Q4_K_M.gguf",
+      "title": "Qwen3 1.7B Q4 K M",
+      "url": "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/d7f544eead698dbd1f15126ef60b45a1e1933222/Qwen3-1.7B-Q4_K_M.gguf",
+      "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+      "bytes": 1107409472
+    },
+    {
+      "name": "Qwen3-4B-Instruct-2507-Q5_K_M.gguf",
+      "title": "Qwen3 4B Instruct 2507 Q5 K M",
+      "url": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q5_K_M.gguf",
+      "sha256": "5bde5e9d883622acb02bf77fe7dcbc56a8b9a9ad4be78a72ca23a532658b4ecb",
+      "bytes": 2889514080
+    },
+    {
+      "name": "Qwen3-8B-Q4_K_M.gguf",
+      "title": "Qwen3 8B Q4 K M",
+      "url": "https://huggingface.co/unsloth/Qwen3-8B-GGUF/resolve/a6adef130ffb23ddaf1a62fec9dced968c9bc482/Qwen3-8B-Q4_K_M.gguf",
+      "sha256": "120307ba529eb2439d6c430d94104dabd578497bc7bfe7e322b5d9933b449bd4",
+      "bytes": 5027784512
+    }
+  ]
+}

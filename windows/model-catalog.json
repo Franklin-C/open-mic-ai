@@ -1,0 +1,99 @@
+{
+  "files": [
+    {
+      "name": "tdt-0.6b-v2-q8_0.gguf",
+      "repo": "mudler/parakeet-cpp-gguf",
+      "revision": "741158ae71e64ef5c89385862c18f777d07a97a1",
+      "size": 903835936,
+      "sha256": "2027e2e1a4dc60ccdd8558f93b15e7c0db4ef8895b4e82e889f3a6275d8119c6",
+      "url": "https://huggingface.co/mudler/parakeet-cpp-gguf/resolve/741158ae71e64ef5c89385862c18f777d07a97a1/tdt-0.6b-v2-q8_0.gguf"
+    },
+    {
+      "name": "tdt-0.6b-v2-q4_k.gguf",
+      "repo": "mudler/parakeet-cpp-gguf",
+      "revision": "741158ae71e64ef5c89385862c18f777d07a97a1",
+      "size": 638373152,
+      "sha256": "417e8a8e994ec4bcce7010ab1e205f8b88291a4535ddd3152d24d0e19517bfc8",
+      "url": "https://huggingface.co/mudler/parakeet-cpp-gguf/resolve/741158ae71e64ef5c89385862c18f777d07a97a1/tdt-0.6b-v2-q4_k.gguf"
+    },
+    {
+      "repo": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+      "revision": "a06e946bb6b655725eafa393f4a9745d460374c9",
+      "name": "Qwen3-4B-Instruct-2507-Q3_K_S.gguf",
+      "sha256": "0ce20058cc0ed6b6c9213bb383589327e458c12ffce0842fc96867042d669c75",
+      "size": 1886997600,
+      "url": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q3_K_S.gguf"
+    },
+    {
+      "repo": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+      "revision": "a06e946bb6b655725eafa393f4a9745d460374c9",
+      "name": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "sha256": "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
+      "size": 2497281120,
+      "url": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
+    },
+    {
+      "repo": "unsloth/Qwen3.5-2B-GGUF",
+      "revision": "f6d5376be1edb4d416d56da11e5397a961aca8ae",
+      "name": "Qwen3.5-2B-Q4_K_M.gguf",
+      "sha256": "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223",
+      "size": 1280835840,
+      "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/f6d5376be1edb4d416d56da11e5397a961aca8ae/Qwen3.5-2B-Q4_K_M.gguf"
+    },
+    {
+      "name": "Qwen3-1.7B-Q4_K_M.gguf",
+      "repo": "unsloth/Qwen3-1.7B-GGUF",
+      "revision": "d7f544eead698dbd1f15126ef60b45a1e1933222",
+      "size": 1107409472,
+      "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+      "url": "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/d7f544eead698dbd1f15126ef60b45a1e1933222/Qwen3-1.7B-Q4_K_M.gguf"
+    },
+    {
+      "name": "Qwen3-4B-Instruct-2507-Q5_K_M.gguf",
+      "repo": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+      "revision": "a06e946bb6b655725eafa393f4a9745d460374c9",
+      "size": 2889514080,
+      "sha256": "5bde5e9d883622acb02bf77fe7dcbc56a8b9a9ad4be78a72ca23a532658b4ecb",
+      "url": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q5_K_M.gguf"
+    },
+    {
+      "name": "Qwen3-8B-Q4_K_M.gguf",
+      "repo": "unsloth/Qwen3-8B-GGUF",
+      "revision": "a6adef130ffb23ddaf1a62fec9dced968c9bc482",
+      "size": 5027784512,
+      "sha256": "120307ba529eb2439d6c430d94104dabd578497bc7bfe7e322b5d9933b449bd4",
+      "url": "https://huggingface.co/unsloth/Qwen3-8B-GGUF/resolve/a6adef130ffb23ddaf1a62fec9dced968c9bc482/Qwen3-8B-Q4_K_M.gguf"
+    }
+  ],
+  "pairs": [
+    {
+      "id": "balanced",
+      "speech": "tdt-0.6b-v2-q8_0.gguf",
+      "text": "Qwen3-4B-Instruct-2507-Q3_K_S.gguf"
+    },
+    {
+      "id": "compact",
+      "speech": "tdt-0.6b-v2-q4_k.gguf",
+      "text": "Qwen3.5-2B-Q4_K_M.gguf"
+    },
+    {
+      "id": "quality",
+      "speech": "tdt-0.6b-v2-q8_0.gguf",
+      "text": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
+    }
+  ],
+  "independent_selection": true,
+  "speech_models": [
+    "tdt-0.6b-v2-q8_0.gguf",
+    "tdt-0.6b-v2-q4_k.gguf"
+  ],
+  "language_models": [
+    "Qwen3-4B-Instruct-2507-Q3_K_S.gguf",
+    "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+    "Qwen3.5-2B-Q4_K_M.gguf",
+    "Qwen3-1.7B-Q4_K_M.gguf",
+    "Qwen3-4B-Instruct-2507-Q5_K_M.gguf",
+    "Qwen3-8B-Q4_K_M.gguf"
+  ],
+  "recommendation": "Balanced at roughly 12 GB RAM and 6 GB dedicated graphics memory; Compact otherwise. Memory-fit heuristic, not a speed guarantee."
+}
