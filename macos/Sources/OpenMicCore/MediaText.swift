@@ -18,7 +18,8 @@ public enum MediaText {
                     }
                     if matches {
                         let end = b[n - 1].range.location + b[n - 1].range.length
-                        next = (next as NSString).substring(from: end).trimmingCharacters(in: CharacterSet(charactersIn: " .,!?;:\r\n"))
+                        next = (next as NSString).substring(from: end)
+                        while let first = next.first, " .,!?;:\r\n".contains(first) { next.removeFirst() }
                         break
                     }
                 }
