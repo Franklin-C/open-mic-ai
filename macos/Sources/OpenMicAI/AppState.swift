@@ -164,7 +164,7 @@ import OpenMicCore
     }
     func recordShortcut() {
         cancelShortcut(); capturingShortcut = true; hotkey.capturing = true
-        shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] (event: NSEvent) -> NSEvent? in
             guard let self else { return event }
             if event.keyCode == 53 { self.cancelShortcut(); return nil }
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)

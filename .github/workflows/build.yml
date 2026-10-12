@@ -1,10 +1,14 @@
 name: Build and test
 on:
   push:
+    paths: ['windows/**', 'macos/**', '.github/workflows/**']
   pull_request:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   windows:
     runs-on: windows-2022

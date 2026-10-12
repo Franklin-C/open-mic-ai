@@ -241,7 +241,7 @@ struct ActivityView: View {
                 HStack { Button("Copy") { state.copy(state.result) }.disabled(state.result.isEmpty); Spacer(); Button("Dictate") { state.shortcut() } }
             } else {
                 if state.phase != "idle" { Text(state.preview).lineLimit(4).font(.callout) }
-                if state.phase == "idle" || state.phase == "recording" { Button(state.phase == "recording" ? "Stop" : "Dictate") { state.shortcut() }.buttonStyle(.borderedProminent) }
+                if state.phase == "idle" || state.phase == "recording" { Button(state.phase == "recording" ? "Stop" : "Dictate") { if state.phase == "recording" { state.finishRecording() } else { state.shortcut() } }.buttonStyle(.borderedProminent) }
             }
             if !state.message.isEmpty { Text(state.message).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
         }.padding(18).frame(width: 440).background(.white).tint(.red).preferredColorScheme(.light)

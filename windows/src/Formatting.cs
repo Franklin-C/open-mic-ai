@@ -12,7 +12,7 @@ public static class Formatting {
     public static PreparedText PreparePolish(string text){
         PreparedText result=Prepare(text);
         if(Regex.IsMatch(text,@"\b(literal|literally|quotation marks|quoted words)\b",RegexOptions.IgnoreCase))return result;
-        result.Text=Regex.Replace(result.Text,@"^\s*all right[,!.]?\s+","",RegexOptions.IgnoreCase);
+        result.Text=Regex.Replace(result.Text,@"^\s*all right(?:[,!.]\s+|\s+(?=(?:I|we)\b))","",RegexOptions.IgnoreCase);
         result.Text=Regex.Replace(result.Text,@"\s*\bmm-hmm[.!]?\s*$","",RegexOptions.IgnoreCase);
         string quantity=@"(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)";
         Match[] corrections=Regex.Matches(result.Text,@"\b(?:actually[, ]+make that|no[, ]+make that|sorry[, ]+(?:make that|I mean))\s+(?<replacement>"+quantity+@"\s+[^,.!?;\r\n]+)[,.!?;]?",RegexOptions.IgnoreCase).Cast<Match>().Reverse().ToArray();
