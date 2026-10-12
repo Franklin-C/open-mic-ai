@@ -113,7 +113,7 @@ public sealed class MediaImportPanel : Panel {
         Controls.AddRange(new Control[]{choose,stop,copy,original,edit,status,result});
         choose.Click+=(s,e)=>{using(OpenFileDialog dialog=new OpenFileDialog {Title="Import audio or video",Filter="Audio and video|*.wav;*.mp3;*.m4a;*.aac;*.mp4;*.mov;*.wma;*.wmv;*.flac;*.aif;*.aiff|All files|*.*",CheckFileExists=true})if(dialog.ShowDialog(FindForm())==DialogResult.OK){raw=false;importer.Start(dialog.FileName,edit.Checked);}};
         stop.Click+=(s,e)=>importer.Cancel();original.Click+=(s,e)=>{raw=!raw;RefreshState();};
-        copy.Click+=(s,e)=>{try{Clipboard.SetText(result.Text);copy.Text="Copied";}catch(System.Runtime.InteropServices.ExternalException){status.Text="Clipboard busy. Try again.";}};
+        copy.Click+=(s,e)=>{try{TextClipboard.SetText(result.Text);copy.Text="Copied";}catch(System.Runtime.InteropServices.ExternalException){status.Text="Clipboard busy. Try again.";}};
         DragEnter+=(s,e)=>{if(!importer.Busy&&e.Data.GetDataPresent(DataFormats.FileDrop))e.Effect=DragDropEffects.Copy;};
         DragDrop+=(s,e)=>{string[] files=e.Data.GetData(DataFormats.FileDrop) as string[];if(files!=null&&files.Length==1){raw=false;importer.Start(files[0],edit.Checked);}else status.Text="Import one file at a time.";};
         importer.Changed+=RefreshState;SizeChanged+=(s,e)=>Arrange();RefreshState();

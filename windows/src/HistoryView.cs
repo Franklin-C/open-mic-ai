@@ -47,7 +47,7 @@ public sealed class HistoryResultRow : Panel {
             Height=y+3;
         } finally {layingOut=false;}
     }
-    static void Copy(string text,Button button,Action<string> feedback){try{if(!String.IsNullOrEmpty(text))Clipboard.SetText(text);button.Text="Copied";feedback("");}catch(System.Runtime.InteropServices.ExternalException){feedback("Clipboard busy. Try again.");}}
+    static void Copy(string text,Button button,Action<string> feedback){try{if(!String.IsNullOrEmpty(text))TextClipboard.SetText(text);button.Text="Copied";feedback("");}catch(System.Runtime.InteropServices.ExternalException){feedback("Clipboard busy. Try again.");}}
 }
 
 public sealed class HistoryWindow : Form {

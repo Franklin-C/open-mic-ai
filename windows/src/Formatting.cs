@@ -9,20 +9,40 @@ public sealed class PreparedText {
     public bool Question;
 }
 public static class Formatting {
+    public static string RemoveUnrequestedClosing(string source,string edited){
+        if(Regex.IsMatch(source??"",@"\b(?:thanks|thank you|regards|sincerely|appreciate)\b",RegexOptions.IgnoreCase))return edited;
+        return Regex.Replace(edited,@"(?:^|\n)\s*(?:Thanks|Thank you|Regards|Best regards|Sincerely)[,.!\s]*$","",RegexOptions.IgnoreCase).TrimEnd();
+    }
+    public static bool RewordedScopePreserved(string source,string edited){
+        int original=Regex.Matches(source??"",@"[\p{L}\p{N}]+").Count,result=Regex.Matches(edited??"",@"[\p{L}\p{N}]+").Count;
+        if(result>original*1.25+8)return false;
+        if(Regex.IsMatch(edited??"",@"(?:^|\n)\s*(?:Thanks|Thank you|Regards|Best regards|Sincerely)[,.!\s]*$",RegexOptions.IgnoreCase)&&!Regex.IsMatch(source??"",@"\b(?:thanks|thank you|regards|sincerely|appreciate)\b",RegexOptions.IgnoreCase))return false;
+        foreach(Match date in Regex.Matches(source??"",@"\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|June|July|August|September|October|November|December)\b",RegexOptions.IgnoreCase))if(!Regex.IsMatch(edited??"",@"\b"+Regex.Escape(date.Value)+@"\b",RegexOptions.IgnoreCase))return false;
+        return true;
+    }
     public static PreparedText PreparePolish(string text){
         PreparedText result=Prepare(text);
         if(Regex.IsMatch(text,@"\b(literal|literally|quotation marks|quoted words)\b",RegexOptions.IgnoreCase))return result;
         result.Text=Regex.Replace(result.Text,@"^\s*all right(?:[,!.]\s+|\s+(?=(?:I|we)\b))","",RegexOptions.IgnoreCase);
         result.Text=Regex.Replace(result.Text,@"\s*\bmm-hmm[.!]?\s*$","",RegexOptions.IgnoreCase);
         string quantity=@"(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)";
-        Match[] corrections=Regex.Matches(result.Text,@"\b(?:actually[, ]+make that|no[, ]+make that|sorry[, ]+(?:make that|I mean))\s+(?<replacement>"+quantity+@"\s+[^,.!?;\r\n]+)[,.!?;]?",RegexOptions.IgnoreCase).Cast<Match>().Reverse().ToArray();
-        foreach(Match correction in corrections){
+        string correctionPattern=@"\b(?:actually(?:[, ]+make (?:that|it))?|no[, ]+make (?:that|it)|sorry(?:[, ]+(?:make (?:that|it)|I mean))?)[, ]+(?<replacement>"+quantity+@"\s+[^,.!?;\r\n]+)[,.!?;]?";
+        // Resolve in speech order: the latest correction wins even when the
+        // original item occurred earlier in the list, rather than beside it.
+        int offset=0;Match correction;
+        while(offset<result.Text.Length&&(correction=Regex.Match(result.Text.Substring(offset),correctionPattern,RegexOptions.IgnoreCase)).Success){
+            int index=offset+correction.Index;
             string replacement=correction.Groups["replacement"].Value.Trim();
             string item=Regex.Replace(replacement,@"^"+quantity+@"\s+","",RegexOptions.IgnoreCase);
+            offset=index+correction.Length;
             if(Regex.Matches(item,@"\S+").Count>4)continue;
-            string prefix=result.Text.Substring(0,correction.Index);
-            Match previous=Regex.Match(prefix,@"\b(?:"+quantity+@"\s+)?"+Regex.Escape(item)+@"[\s,.!?;]*$",RegexOptions.IgnoreCase);
-            if(previous.Success)result.Text=prefix.Substring(0,previous.Index)+replacement+"."+result.Text.Substring(correction.Index+correction.Length);
+            string prefix=result.Text.Substring(0,index);
+            Match[] earlier=Regex.Matches(prefix,@"\b(?:"+quantity+@"\s+)?"+Regex.Escape(item)+@"\b",RegexOptions.IgnoreCase).Cast<Match>().ToArray();
+            if(earlier.Length==0)continue;
+            Match previous=earlier[earlier.Length-1];
+            prefix=prefix.Substring(0,previous.Index)+replacement+prefix.Substring(previous.Index+previous.Length);
+            result.Text=prefix+result.Text.Substring(index+correction.Length);
+            offset=prefix.Length;
         }
         result.Text=result.Text.Trim();return result;
     }
@@ -40,6 +60,10 @@ public static class Formatting {
             position++;
         }
         return written.Length>0||original.Length==0;
+    }
+    public static bool PolishContentComplete(string source,string edited){
+        Func<string,string[]> words=value=>Regex.Matches(Regex.Replace(value??"",@"(?m)^\s*\d+[.)]\s+","").Replace('\u2019','\''),@"[\p{L}\p{M}\p{N}_]+(?:'[\p{L}\p{M}\p{N}_]+)*").Cast<Match>().Select(m=>m.Value.ToLowerInvariant()).Where(w=>w!="and").ToArray();
+        return words(source).SequenceEqual(words(edited));
     }
     // Supplement semantic review where a small model can confuse fulfilling a
     // list request with preserving the speaker's personal intention to make it.

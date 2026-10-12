@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -16,6 +16,12 @@ using System.Windows.Forms;
 using LocalFlow;
 
 public static class TextActionChecks {
+    sealed class CanvasField : Control {
+        public string Source="";public bool Highlighted=true;
+        public CanvasField(){TabStop=true;AccessibleRole=AccessibleRole.Client;AccessibleName="Canvas editor fixture";}
+        protected override bool ProcessCmdKey(ref Message message,Keys key){if(key==(System.Windows.Forms.Keys.Control|System.Windows.Forms.Keys.C)){if(Highlighted){DataObject data=new DataObject();data.SetData(DataFormats.UnicodeText,Source);data.SetData(DataFormats.Html,"<p>Fixture text</p>");Clipboard.SetDataObject(data,true);}return true;}if(key==(System.Windows.Forms.Keys.Control|System.Windows.Forms.Keys.V)){if(Highlighted){Source=Clipboard.GetText();Highlighted=false;Invalidate();}return true;}return base.ProcessCmdKey(ref message,key);}
+        protected override void OnPaint(PaintEventArgs e){TextRenderer.DrawText(e.Graphics,Source,Font,ClientRectangle,Color.Black,TextFormatFlags.WordBreak);}
+    }
     static readonly Dictionary<string,object> report=new Dictionary<string,object>();
     static readonly List<object> timings=new List<object>();
     static T Field<T>(object target,string name){return (T)target.GetType().GetField(name,BindingFlags.Instance|BindingFlags.NonPublic).GetValue(target);}
@@ -68,6 +74,15 @@ public static class TextActionChecks {
             first.ReadOnly=true;Activate(form,first);first.Text=source;first.SelectAll();await Shortcut(context);await Click(pill,0);await Wait(()=>Field<TextActionSession>(context,"actionSession")==null);Check(first.Text==source&&pill.ResultReady&&All(pill).OfType<TextBox>().Single(t=>t.Name=="Card result").Visible&&!Field<System.Windows.Forms.Timer>(pill,"dismiss").Enabled,"The Rewrite button on a read-only selection keeps the source and shows a full copyable result");first.ReadOnly=false;
             using(Pill voice=new Pill()){int requests=0;voice.SpeakInstruction=()=>requests++;voice.ShowTextActions(source,"Keep my wording","French",form.Handle);Rectangle bounds=voice.VoiceBounds;int point=((bounds.Top+12)<<16)|(bounds.Left+20);PostMessage(voice.Handle,0x201,new IntPtr(1),new IntPtr(point));PostMessage(voice.Handle,0x202,IntPtr.Zero,new IntPtr(point));await Task.Delay(70);Check(requests==1,"Speak instruction is a working button on the selected-text card");}
             await PolishChecks.Run(models,Check,report);
+            using(CanvasField canvas=new CanvasField {Dock=DockStyle.Fill,Source=source}){
+                first.Visible=second.Visible=false;form.Controls.Add(canvas);form.Activate();SetForegroundWindow(form.Handle);canvas.Focus();Clipboard.SetText("Canvas clipboard sentinel");
+                await Shortcut(context);await Wait(()=>pill.ChoosingAction);Check(Field<DictationSession>(context,"session")==null&&Field<TextActionSession>(context,"actionSession").Source==source,"Canvas selection routes the unified shortcut to AI actions rather than overwriting dictation");Check(Clipboard.GetText()=="Canvas clipboard sentinel","Canvas shortcut capture restores the clipboard");
+                await Click(pill,2);await Wait(()=>Field<TextActionSession>(context,"actionSession")==null);Check(canvas.Source==source&&pill.Caption=="Summary"&&pill.ResultReady,"Canvas summary is displayed on the floating card and leaves the source intact");
+                canvas.Highlighted=true;canvas.Focus();await Shortcut(context);await Wait(()=>pill.ChoosingAction);await Click(pill,0);await Wait(()=>Field<TextActionSession>(context,"actionSession")==null);Check(pill.ResultReady&&!canvas.Highlighted&&canvas.Source.Contains("7319"),"Canvas rewrite replaces only the verified highlight");Check(Clipboard.GetText()=="Canvas clipboard sentinel","Canvas rewrite preserves the user's clipboard");
+                canvas.Source=source;canvas.Highlighted=true;canvas.Focus();await Shortcut(context);await Wait(()=>pill.ChoosingAction);canvas.Source="Changed selection";await Click(pill,0);await Wait(()=>Field<TextActionSession>(context,"actionSession")==null);Check(canvas.Source=="Changed selection","Changed canvas text prevents AI replacement");
+                canvas.Highlighted=false;canvas.Focus();FocusTarget caret=FocusTarget.Capture();Check(String.IsNullOrEmpty(await caret.CaptureSelectionAsync(CancellationToken.None)),"A canvas caret does not reuse stale clipboard text as a selection");canvas.Highlighted=true;Check(!await FlowContext.Paste("Unexpected dictation",caret,CancellationToken.None),"A highlight created during dictation cannot be overwritten");
+                Call(context,"Cancel");form.Controls.Remove(canvas);first.Visible=second.Visible=true;Activate(form,first);
+            }
             Clipboard.SetText("Spoken tools clipboard sentinel");first.Text="The meeting is on Saturday. Bring the blue folder.";Stopwatch pipeline=Stopwatch.StartNew();await Stage(context,form,first,"Change Saturday to Sunday and blue to green.");await Wait(()=>Field<DictationSession>(context,"session")==null);Check(first.Text.Contains("Sunday")&&first.Text.Contains("green")&&Clipboard.GetText()=="Spoken tools clipboard sentinel","Spoken edit pastes the requested changes and restores the clipboard");report["rewrite_including_paste_seconds"]=pipeline.Elapsed.TotalSeconds;
             int count=history.Snapshot().Length;first.Text=source;await Stage(context,form,first,"Translate this into French.");Call(context,"Cancel");await Task.Delay(450);Check(first.Text==source&&history.Snapshot().Length==count&&!pill.Processing,"Cancelling spoken inference prevents replacement and history writes");
             first.Text=source;TaskCompletionSource<string> delayed=new TaskCompletionSource<string>();await Stage(context,form,first,"",delayed.Task);first.Select(0,7);delayed.SetResult("Rewrite this more professionally.");await Wait(()=>Field<DictationSession>(context,"session")==null);Check(first.Text==source&&pill.ResultReady&&!Field<System.Windows.Forms.Timer>(pill,"dismiss").Enabled,"Changed selection prevents spoken rewrite paste and retains Copy");

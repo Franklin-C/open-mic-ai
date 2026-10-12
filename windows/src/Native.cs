@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Automation;
 using System.Windows.Forms;
 
@@ -14,6 +16,7 @@ public static class Native {
     [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr window);
     [DllImport("user32.dll",EntryPoint="GetWindowLongW")] public static extern int WindowStyle(IntPtr window,int index);
     [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int key);
+    [DllImport("user32.dll",EntryPoint="GetClipboardSequenceNumber")] public static extern int ClipboardSequence();
     [DllImport("user32.dll", SetLastError=true)] public static extern bool RegisterHotKey(IntPtr window, int id, uint modifiers, uint key);
     [DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr window, int id);
     [DllImport("user32.dll",CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr window,StringBuilder name,int max);
@@ -46,9 +49,22 @@ public static class Native {
     public static bool ModifiersDown() {
         return new[] { 0x10, 0x11, 0x12, 0x5B, 0x5C }.Any(k => (GetAsyncKeyState(k) & 0x8000) != 0);
     }
-    public static bool Paste() {
+    public static bool Paste() {return SendChord(0x56);}
+    public static bool Copy() {
+        // Preserve held shortcut keys while issuing an unmodified Ctrl+C.
+        ushort[] modifiers={0x10,0x12,0x5B,0x5C};
+        ushort[] held=modifiers.Where(k=>(GetAsyncKeyState(k)&0x8000)!=0).ToArray();
+        bool control=(GetAsyncKeyState(0x11)&0x8000)!=0;
+        System.Collections.Generic.List<Input> inputs=new System.Collections.Generic.List<Input>();
+        Action<ushort,bool> key=(value,up)=>{Input input=new Input {Type=1};input.Data.Keyboard.Key=value;input.Data.Keyboard.Flags=up?2U:0U;inputs.Add(input);};
+        foreach(ushort value in held)key(value,true);
+        if(!control)key(0x11,false);key(0x43,false);key(0x43,true);if(!control)key(0x11,true);
+        foreach(ushort value in held)key(value,false);
+        return SendInput((uint)inputs.Count,inputs.ToArray(),Marshal.SizeOf(typeof(Input)))==inputs.Count;
+    }
+    static bool SendChord(ushort key) {
         Input[] inputs = new Input[4];
-        ushort[] keys = {0x11, 0x56, 0x56, 0x11};
+        ushort[] keys = {0x11, key, key, 0x11};
         for (int i=0;i<4;i++) {
             inputs[i].Type = 1;
             inputs[i].Data.Keyboard.Key = keys[i];
@@ -90,6 +106,8 @@ public sealed class FocusTarget {
     string selectedText;
     System.Windows.Automation.Text.TextPatternRange selectedRange;
     AutomationElement selectionElement;
+    bool clipboardSelection;
+    public bool CanCheckSelectionDirectly {get{return !clipboardSelection;}}
     public static FocusTarget Capture() {
         FocusTarget target = new FocusTarget();
         target.Window = Native.GetForegroundWindow();
@@ -139,6 +157,43 @@ public sealed class FocusTarget {
         }catch(ElementNotAvailableException){}catch(InvalidOperationException){}catch(COMException){}
         return null;
     }
+    // Canvas editors (including Google Docs) often expose an empty accessibility
+    // selection. Ask the focused app to copy it; never move the caret or clear it.
+    public async Task<string> CaptureSelectionAsync(CancellationToken cancel) {
+        string text=CaptureSelection();
+        if(text!=null)return text;
+        text=await CopySelection(cancel);
+        if(!String.IsNullOrWhiteSpace(text)){selectedText=text;clipboardSelection=true;SelectionWritable=true;}
+        return text;
+    }
+    public async Task<bool> SelectionMatchesAsync(CancellationToken cancel) {
+        if(!clipboardSelection)return SelectionMatches();
+        return MatchesCurrent()&&selectedText!=null&&await CopySelection(cancel)==selectedText;
+    }
+    public async Task<bool> DictationTargetMatchesAsync(CancellationToken cancel){
+        if(!MatchesCurrent())return false;
+        if(selectedText!=null)return selectedText.Length==0&&SelectionMatches();
+        return String.IsNullOrWhiteSpace(await CopySelection(cancel));
+    }
+    async Task<string> CopySelection(CancellationToken cancel) {
+        if(IsPassword||!MatchesCurrent())return null;
+        cancel.ThrowIfCancellationRequested();
+        if(!MatchesCurrent())throw new InvalidOperationException("The focused text box changed. Try again.");
+        IDataObject previous=ClipboardBackup.Take();int before=Native.ClipboardSequence(),copied=0;
+        try {
+            if(!Native.Copy())throw new InvalidOperationException("Windows blocked reading the selected text. Copy it and try again.");
+            for(int i=0;i<12;i++){
+                await Task.Delay(15);
+                if(!MatchesCurrent())throw new InvalidOperationException("The focused text box changed. Try again.");
+                if(Native.ClipboardSequence()==before)continue;
+                copied=Native.ClipboardSequence();
+                string text=Clipboard.ContainsText()?Clipboard.GetText():null;
+                cancel.ThrowIfCancellationRequested();
+                return text;
+            }
+            cancel.ThrowIfCancellationRequested();return null; // Ctrl+C with a caret and no highlight leaves it unchanged.
+        } finally {if(copied!=0&&Native.ClipboardSequence()==copied)ClipboardBackup.Restore(previous);}
+    }
     public bool SelectionMatches() {
         if(!MatchesCurrent()||selectedText==null)return false;
         try {
@@ -154,6 +209,16 @@ public sealed class FocusTarget {
                 ranges[0].CompareEndpoints(System.Windows.Automation.Text.TextPatternRangeEndpoint.End,selectedRange,System.Windows.Automation.Text.TextPatternRangeEndpoint.End)==0;
         }catch(Exception){return false;}
     }
+}
+
+public static class ClipboardBackup {
+    public static IDataObject Take(){
+        IDataObject data=Clipboard.GetDataObject();if(data==null)return null;
+        DataObject snapshot=new DataObject();
+        foreach(string format in data.GetFormats(false))try{object value=data.GetData(format,false);if(value!=null)snapshot.SetData(format,value);}catch(ArgumentException){}catch(NotSupportedException){}
+        return snapshot;
+    }
+    public static void Restore(IDataObject previous){try{if(previous==null)Clipboard.Clear();else Clipboard.SetDataObject(previous,true);}catch(ExternalException){}}
 }
 
 public sealed class ShortcutWindow : NativeWindow, IDisposable {

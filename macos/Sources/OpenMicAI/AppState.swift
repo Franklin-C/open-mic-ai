@@ -66,7 +66,7 @@ import OpenMicCore
     func addHistory(source: String, result: String, action: String, seconds: Double = 0) {
         if preferences.saveHistory { history.insert(HistoryEntry(source: source, result: result, action: action, duration: seconds), at: 0); history = Array(history.prefix(200)); write("history.json", history) }
     }
-    func copy(_ text: String) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text, forType: .string); message = "Copied" }
+    func copy(_ text: String) { TextClipboard.set(text); message = "Copied" }
     func loadModels(download: Bool) async {
         guard !modelBusy, !importBusy, phase != "recording", phase != "ai", phase != "transcribing" else { return }
         modelBusy = true; defer { modelBusy = false }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -35,7 +35,7 @@ public sealed class DashboardWindow : Form {
     }
     void RefreshMetrics(){words.Value(usage.Data.Words.ToString("N0"));speed.Value(usage.Data.Seconds>0?usage.WordsPerMinute.ToString("0"):"—");streak.Value(usage.Streak(DateTime.Today).ToString());sessions.Value(usage.Data.Sessions.ToString("N0"));grid.Invalidate();}
     void RefreshRecent(){if(IsDisposed)return;recent.SuspendLayout();foreach(Control old in recent.Controls.Cast<Control>().ToArray())old.Dispose();recent.Controls.Clear();HistoryEntry[] entries=history.Snapshot().Where(e=>!e.VoiceEdit).Take(5).ToArray();if(entries.Length==0){recent.Controls.Add(new Label {Text="Your next dictation will appear here.",ForeColor=Theme.Muted,AutoSize=true,Padding=new Padding(2,22,0,0)});}foreach(HistoryEntry entry in entries){Panel row=new Panel {Width=Math.Max(200,recent.ClientSize.Width-23),Height=107,BackColor=Theme.Surface,Margin=new Padding(0,0,0,10),Padding=new Padding(16)};Label time=new Label {Text=entry.CreatedUtc.ToLocalTime().ToString("MMM d · h:mm tt")+"   "+entry.Mode,Location=new Point(15,10),Size=new Size(row.Width-30,22),ForeColor=Theme.Muted,Anchor=AnchorStyles.Top|AnchorStyles.Left|AnchorStyles.Right};Label text=new Label {Text=String.IsNullOrEmpty(entry.Result)?entry.Transcript:entry.Result,Location=new Point(15,34),Size=new Size(row.Width-30,31),AutoEllipsis=true,Anchor=AnchorStyles.Top|AnchorStyles.Left|AnchorStyles.Right};Button copy=Theme.Button("Copy"),original=Theme.Button("Original");copy.AutoSize=original.AutoSize=false;copy.MinimumSize=new Size(74,29);original.MinimumSize=new Size(94,29);copy.Size=new Size(74,29);original.Size=new Size(94,29);copy.Location=new Point(15,69);original.Location=new Point(99,69);copy.Click+=(s,e)=>Copy(String.IsNullOrEmpty(entry.Result)?entry.Transcript:entry.Result,copy);original.Click+=(s,e)=>Copy(entry.Transcript,original);row.Controls.AddRange(new Control[]{time,text,copy,original});recent.Controls.Add(row);}recent.ResumeLayout();}
-    static void Copy(string text,Button button){try{if(!String.IsNullOrEmpty(text))Clipboard.SetText(text);button.Text="Copied";}catch(System.Runtime.InteropServices.ExternalException){button.Text="Try again";}}
+    static void Copy(string text,Button button){try{if(!String.IsNullOrEmpty(text))TextClipboard.SetText(text);button.Text="Copied";}catch(System.Runtime.InteropServices.ExternalException){button.Text="Try again";}}
     void ResizeRows(){foreach(Panel row in recent.Controls.OfType<Panel>())row.Width=Math.Max(200,recent.ClientSize.Width-23);}
     protected override void Dispose(bool disposing){if(disposing){history.Changed-=RefreshRecent;usage.Changed-=RefreshMetrics;}base.Dispose(disposing);}
 }

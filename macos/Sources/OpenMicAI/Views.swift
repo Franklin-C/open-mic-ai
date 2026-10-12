@@ -202,8 +202,8 @@ struct ActivityView: View {
                 }
             }
             if state.preferences.style == .polish {
-                Picker("Polish", selection: $state.preferences.reworded) { Text("My words").tag(false); Text("Reworded").tag(true) }.pickerStyle(.segmented).onChange(of: state.preferences.reworded) { _ in state.save() }
-                Text(state.preferences.reworded ? "Rewrite + formatting" : "Formatting only. No added wording.").font(.caption).foregroundStyle(.secondary)
+                Picker("Wording", selection: $state.preferences.reworded) { Text("My words").tag(false); Text("Reworded").tag(true) }.pickerStyle(.segmented).onChange(of: state.preferences.reworded) { _ in state.save() }
+                Picker("Format", selection: Binding(get: { state.preferences.polishFormat ?? "Auto" }, set: { state.preferences.polishFormat = $0; state.save() })) { ForEach(PolishLayout.choices, id: \.self) { Text($0).tag($0) } }
             }
             if state.preferences.style == .custom { Text("Custom prompt").font(.headline); TextEditor(text: $state.preferences.custom).frame(height: 180); Button("Save prompt") { state.save() }.buttonStyle(.borderedProminent) }
         }

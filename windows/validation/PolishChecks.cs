@@ -8,6 +8,40 @@ using System.Threading.Tasks;
 using LocalFlow;
 
 public static class PolishChecks {
+    public static async Task Formats(Models models,Action<bool,string> check,Dictionary<string,object> report){
+        string[][] cases={
+            new[]{"table","Comparison table. Plan price storage. Basic five dollars ten gigabytes. Pro twelve dollars one hundred gigabytes."},
+            new[]{"blog","Blog post about my first week cycling to work. On Monday the ride took twenty minutes and I arrived feeling awake. By Friday I knew a quieter route through the park. I still need a better rain jacket because I got wet on Thursday. I plan to keep riding twice a week, weather permitting."},
+            new[]{"essay","Essay about keeping the library open late. Students who work during the day need somewhere quiet to study in the evening. Longer hours could help them, but staffing costs would need review. I think a one month trial on Thursdays would give us useful information before we decide."},
+            new[]{"notes","Meeting notes. Discussion the export is failing on large files. Decision keep the current release date for now. Actions Maya will investigate the export on Friday and Lee will check the test files. We have not agreed on a fix yet."},
+            new[]{"checklist","Travel checklist. Pack the passport, charge the camera and check the train time before Friday. Don't book another ticket until Maya confirms."},
+            new[]{"outline","Outline for the talk. First topic local privacy with subpoints offline recording and local history. Second topic speed with subpoints loaded models and short recordings. Final topic limitations with subpoint transcription errors."},
+            new[]{"proposal","Proposal for a quieter office. Problem the printer interrupts calls. Approach move it to the spare room for a two week trial. Scope keep the same printer and don't buy new equipment. Next action ask Lee to check the room on Monday."},
+            new[]{"agenda","Agenda for Friday's review. First discuss the export error with Maya, then review the design with Lee, finally decide whether to run another test. Keep the meeting under thirty minutes."},
+            new[]{"faq","FAQ about the workshop. Can I bring my laptop? Yes, please bring it fully charged. Is lunch included? No, bring your own lunch. Where should I park? We have not confirmed parking yet."},
+            new[]{"social","Social post. We are testing later library hours on Thursdays this month. Come by between six and eight and tell us how it works for you. This is a trial, and we have not decided on permanent hours."},
+            new[]{"script","Script for two speakers. Maya: The export failed again. Lee: Was it the large test file? Maya: Yes, but the small file worked. Lee: Let's check the logs before changing the release date."}
+        };
+        List<object> results=new List<object>();report["format_results"]=results;
+        foreach(bool reworded in new[]{false,true})foreach(string[] item in cases){
+            Stopwatch timer=Stopwatch.StartNew();string source=Formatting.PreparePolish(item[1]).Text;
+            string result=await models.Rewrite(item[1],"Smart formatting","",CancellationToken.None,"","Medium",reworded);
+            results.Add(new {format=item[0],reworded,source,result,seconds=timer.Elapsed.TotalSeconds});Console.WriteLine((reworded?"REWORDED ":"MY WORDS ")+item[0]+" "+result.Replace("\n"," | "));
+            check(PolishLayout.Fits(item[0],result),(reworded?"Reworded":"My words")+" renders "+item[0]);
+            if(!reworded)check(Formatting.PolishContentComplete(source,result)&&Formatting.PolishWordsPreserved(source,result),"My words retains the complete wording for "+item[0]);
+            if(item[0]=="table")check(Regex.IsMatch(result,@"(?mi)^\|[^\r\n]*Basic[^\r\n]*(?:five|5)[^\r\n]*(?:ten|10)[^\r\n]*\|")&&Regex.IsMatch(result,@"(?mi)^\|[^\r\n]*Pro[^\r\n]*(?:twelve|12)[^\r\n]*(?:one hundred|100)[^\r\n]*\|"),"Table keeps each plan's price and storage together");
+            if(item[0]=="checklist")check(Regex.Matches(result,@"(?m)^\s*- \[ \] ").Count>=3&&!result.Contains("[x]"),"Checklist separates tasks without marking them complete");
+            if(item[0]=="outline")check(Regex.IsMatch(result,@"(?m)^[ \t]+- "),"Outline retains nested subpoints");
+            if(item[0]=="faq")check(Regex.Matches(result,@"\?").Count>=3&&result.IndexOf("not confirmed",StringComparison.OrdinalIgnoreCase)>=0,"FAQ preserves unanswered questions and uncertainty");
+            if(item[0]=="social")check(!result.Contains("#")&&!result.Contains("http"),"Social formatting adds no hashtag or link");
+            if(item[0]=="agenda")check(result.Contains("Friday")&&result.Contains("Maya")&&result.Contains("Lee")&&Regex.IsMatch(result,@"(?:thirty|30)",RegexOptions.IgnoreCase)&&!result.Contains("logs")&&!result.Contains("assigned"),"Agenda retains timing and owners without inventing preparation");
+            if(item[0]=="blog")check(!result.Contains("less rushed")&&!result.Contains("more natural")&&result.Contains("Thursday"),"Blog editing retains the reported experience without adding feelings");
+        }
+        // Choosing a format skips the router and uses the same editing safeguards.
+        string chosen=await models.Rewrite("Pack the passport and charge the camera before Friday.","Smart formatting","",CancellationToken.None,"","Medium",false,"Checklist");
+        check(PolishLayout.Fits("checklist",chosen)&&chosen.Contains("Friday"),"The in-app Format choice overrides Auto");
+        report["format_checks_complete"]=true;
+    }
     static bool Bullets(string text){return Regex.Matches(text,@"(?m)^\s*[-*•]\s+\S").Count>=2;}
     static bool Headings(string text){return text.Split(new[]{'\n'},StringSplitOptions.RemoveEmptyEntries).Count(line=>line.Trim().Length<48&&!Regex.IsMatch(line.Trim(),@"^(?:[-*•]|\d+[.)])\s")&&!Regex.IsMatch(line.Trim(),@"[.!?]$"))>=2;}
     public static async Task Run(Models models,Action<bool,string> check,Dictionary<string,object> report){
@@ -48,8 +82,24 @@ public static class PolishChecks {
         text=await polish("hey Nina the printer don't work and i need it for Monday");check(text.IndexOf("don't",StringComparison.OrdinalIgnoreCase)>=0&&text.IndexOf("need",StringComparison.OrdinalIgnoreCase)>=0,"Polish does not change words to fix informal grammar");
         report["polish_word_checks_complete"]=true;
         string rewordSource="Hi Nina the printer don't work and I want to fix it before Monday.";
-        text=await models.Rewrite(rewordSource,"Smart formatting","",CancellationToken.None,"","Medium",true);report["reworded_polish_source"]=rewordSource;report["reworded_polish_result"]=text;check(text.Contains("Nina")&&text.Contains("Monday")&&Regex.IsMatch(text,@"(?:doesn't|does not) work",RegexOptions.IgnoreCase),"Reworded Polish can improve grammar while retaining names and timing");
+        text=await models.Rewrite(rewordSource,"Smart formatting","",CancellationToken.None,"","Medium",true);report["reworded_polish_source"]=rewordSource;report["reworded_polish_result"]=text;check(text.Contains("Nina")&&text.Contains("Monday")&&Regex.IsMatch(text,@"(?:(?:doesn't|does not) work|(?:isn't|is not) working)",RegexOptions.IgnoreCase)&&!text.Contains("Thanks"),"Reworded Polish can improve grammar while retaining names and timing");
         check(await models.MeaningPreserved(rewordSource,text,CancellationToken.None,true,false),"Reworded Polish still passes factual and completeness review");
+        string[] broader={
+            "Add the following bananas, pears, three apples. Actually two bananas.",
+            "My goals for this month are to walk every day read two books and spend less on takeaway food. I don't want a strict plan just a few things to focus on.",
+            "So to make this recipe you start by washing the rice then you put it in a pan with water and then bring it to the boil reduce the heat and simmer it for fifteen minutes and don't open the lid while it's cooking.",
+            "Quick update on the app the recording button is working now but the model download is still failing and the history page needs a search box. Tomorrow I will fix the download and Alex will handle the search.",
+            "Dear Maya I hope you're doing well I'm emailing because the invoice from last week has the wrong delivery address can you update it to 12 Oak Street please and send me a corrected copy thanks Daniel.",
+            "The cafe had tables chairs and books everywhere and the music was quiet. I loved it and want to go again.",
+            "I want to explain why I am changing my morning routine. I used to check emails as soon as I woke up, which made me feel rushed before work. Now I take a short walk and eat breakfast first. The walk helps me think about the day and decide what matters. I still check urgent messages before leaving, but I leave the rest until I reach the office. I am going to try this for two weeks and see whether I feel calmer."
+        };
+        foreach(bool reworded in new[]{false,true})for(int i=0;i<broader.Length;i++){
+            Stopwatch timer=Stopwatch.StartNew();text=await models.Rewrite(broader[i],"Smart formatting","",CancellationToken.None,"","Medium",reworded);results.Add(new {source=broader[i],result=text,seconds=timer.Elapsed.TotalSeconds});
+            Console.WriteLine((reworded?"REWORDED ":"MY WORDS ")+text.Replace("\n"," | "));
+            if(!reworded)check(Formatting.PolishWordsPreserved(Formatting.PreparePolish(broader[i]).Text,text)&&Formatting.PolishContentComplete(Formatting.PreparePolish(broader[i]).Text,text),"Broader My words output preserves source content: "+i);
+            bool valid=i==0?Bullets(text)&&Regex.Matches(text,@"\bbananas\b",RegexOptions.IgnoreCase).Count==1&&Regex.IsMatch(text,@"(?:two|2) bananas",RegexOptions.IgnoreCase):i==1?Bullets(text)&&text.Contains("month")&&text.Contains("strict plan"):i==2?Regex.Matches(text,@"(?m)^\d+\. ").Count>=3&&text.Contains("fifteen")&&Regex.IsMatch(text,@"(?:don't|do not).*open",RegexOptions.IgnoreCase):i==3?text.Contains("\n")&&!Regex.IsMatch(text,@"(?m)^\d+\. ")&&text.Contains("Tomorrow")&&text.Contains("Alex"):i==4?text.Contains("\n\n")&&text.Contains("Maya")&&text.Contains("12 Oak Street")&&text.Contains("Daniel"):i==5?!Bullets(text)&&!Regex.IsMatch(text,@"(?m)^\d+\. "):text.Contains("\n\n")&&!Bullets(text);
+            check(valid,(reworded?"Reworded":"My words")+" selects and fulfills the contextual format: "+i);
+        }
         report["polish_modes_checks_complete"]=true;
         report["polish_context_checks_complete"]=true;
         report["polish_checks_complete"]=true;

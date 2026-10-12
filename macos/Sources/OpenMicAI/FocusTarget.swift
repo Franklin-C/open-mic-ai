@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import OpenMicCore
 
 @MainActor final class FocusTarget {
     let pid: pid_t
@@ -37,7 +38,7 @@ import ApplicationServices
     func paste(_ text: String, replacing: Bool) async -> Bool {
         guard matches(requireSelection: replacing) else { return false }
         var writable: DarwinBoolean = false
-        if AXUIElementIsAttributeSettable(element, kAXSelectedTextAttribute as CFString, &writable) == .success, writable.boolValue {
+        if TableFormatting.html(text) == nil, AXUIElementIsAttributeSettable(element, kAXSelectedTextAttribute as CFString, &writable) == .success, writable.boolValue {
             return AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFString) == .success
         }
         // Do not send keystrokes to a read-only field or an unsupported target.
@@ -49,7 +50,7 @@ import ApplicationServices
         let backup = (clipboard.pasteboardItems ?? []).map { item -> NSPasteboardItem in
             let copy = NSPasteboardItem(); for type in item.types { if let data = item.data(forType: type) { copy.setData(data, forType: type) } }; return copy
         }
-        clipboard.clearContents(); clipboard.setString(text, forType: .string); let sequence = clipboard.changeCount
+        TextClipboard.set(text); let sequence = clipboard.changeCount
         guard matches(requireSelection: replacing), let source = CGEventSource(stateID: .combinedSessionState), let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true), let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else {
             if clipboard.changeCount == sequence { clipboard.clearContents(); clipboard.writeObjects(backup) }; return false
         }

@@ -22,7 +22,8 @@ or summarize it with the same shortcut.
 
 **Dictate anywhere you type.** The floating bar follows your workflow across apps,
 without a browser extension. Automatic paste and selected-text capture depend on
-the text field's accessibility support; Copy is always available as a fallback.
+the text field's accessibility support. Windows also reads selections through a
+clipboard fallback for canvas editors such as Google Docs. Copy is always available.
 
 No account, subscription, API key, or hosted inference service. Download your
 models once and keep speaking offline.
@@ -54,10 +55,18 @@ model selectors.
 | **Polish → Reworded** | Clearer phrasing plus context-aware formatting, while preserving meaning. |
 | **Custom** | Your own instructions in an inline prompt box. |
 
-Polish chooses prose, bullets, numbered steps, or headings from context. It keeps
+All writing formats live under **Settings → Style → Polish → Format**. Choose
+**Auto**, or pick a message, paragraphs, bullet list, goals, instructions,
+recipe, report, email, table, blog post, essay, meeting notes, checklist, outline,
+proposal, agenda, FAQ, social post or script. Auto uses the resident local LLM;
+there is no extra model download. Tables include only supplied values and copy
+as rich tables in compatible editors, with plain-text tables for other fields.
+Polish keeps
 meaningful introductions, descriptions, quantities, conditions and closing
-requests. “My words” checks the output's words against the source before accepting
-it. Reworded output still receives a local meaning check. Failed dictation edits
+requests. “My words” renders the model's layout with the original words when
+needed, and checks wording and completeness before accepting it. Reworded output
+still receives a local meaning check. Quantity corrections update an earlier list
+item instead of adding a duplicate. Failed dictation edits
 get one retry, then retain the transcript; rejected selected-text edits leave the
 original unchanged. Model checks reduce errors, but are not a guarantee of perfect
 meaning or speech recognition.

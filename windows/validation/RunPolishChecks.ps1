@@ -1,4 +1,4 @@
-param([switch]$RetryOnly)
+param([switch]$RetryOnly,[switch]$FormatsOnly)
 $ErrorActionPreference='Stop'
 $appRoot=(Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $portable=Join-Path (Split-Path $appRoot) 'OpenMicAI-Portable.exe'
@@ -22,7 +22,7 @@ try {
     $sources=@(Get-ChildItem -LiteralPath (Join-Path $appRoot 'src') -Filter '*.cs' | ForEach-Object {$_.FullName})
     & $compiler @arguments @sources (Join-Path $PSScriptRoot 'PolishProbe.cs') (Join-Path $PSScriptRoot 'PolishChecks.cs') (Join-Path $PSScriptRoot 'PolishRetryChecks.cs')
     if($LASTEXITCODE-ne 0){throw 'Polish check compilation failed.'}
-    if($RetryOnly){& $testExe $connection (Join-Path $PSScriptRoot 'polish-retry-checks.json') 'retry'}else{& $testExe $connection (Join-Path $PSScriptRoot 'polish-checks.json')}
+    if($RetryOnly){& $testExe $connection (Join-Path $PSScriptRoot 'polish-retry-checks.json') 'retry'}elseif($FormatsOnly){& $testExe $connection (Join-Path $PSScriptRoot 'format-checks.json') 'formats'}else{& $testExe $connection (Join-Path $PSScriptRoot 'polish-checks.json')}
     if($LASTEXITCODE-ne 0){throw 'Polish checks failed; inspect polish-checks.json.'}
 } finally {
     $resolved=(Resolve-Path -LiteralPath $fixture).Path

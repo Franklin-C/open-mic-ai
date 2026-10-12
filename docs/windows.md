@@ -16,6 +16,9 @@ finish. Select some text before pressing the same shortcut to open **Rewrite**,
 **Translate**, and **Summarize**. Press again or click **Speak instruction** to
 describe the change. A rewrite replaces the exact selection when it remains
 valid; translation and summary appear on the floating card for review and copying.
+For editors such as Google Docs, selection capture can use Ctrl+C when Windows
+accessibility does not expose the highlight. The original clipboard formats are
+restored. The selection is checked again before a rewrite can replace it.
 
 In **Settings → Shortcuts**, click the shortcut button and press your preferred
 keys or a side mouse button. Choose click-to-toggle, hold-to-talk, or automatic
@@ -25,8 +28,13 @@ stopping after a pause. **Escape** cancels.
 
 Choose **Raw transcript**, **Clean up**, **Polish**, or **Custom** under
 **Settings → Style**. Polish has **My words** and **Reworded** options. My words
-uses a deterministic word check to reject added or substituted wording, plus a
-meaning review to catch omissions. Formatting may remove true fillers, list
+has one **Format** picker: Auto or 19 formats, including tables, blog posts,
+essays, meeting notes, checklists, outlines, proposals, agendas, FAQs and scripts.
+Auto uses your loaded local LLM. Tables use supplied data and paste as rich
+tables in compatible editors; other fields receive plain-text tables.
+My words recovers useful layout with your original words and checks
+wording and completeness. Reworded can improve phrasing and gets a local meaning
+review. Saying “actually, two bananas” updates the earlier banana item. Formatting may remove true fillers, list
 connectors and superseded corrections. It does not promise to fix transcription
 mistakes without changing words.
 
