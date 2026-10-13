@@ -61,9 +61,9 @@ public sealed class MediaImportController {
         try {
             string source=await ReadTranscript(path,vocabulary,Transcribe,progress,token);reading=false;Source=source;Result=source;
             if(String.IsNullOrWhiteSpace(source)){finalStatus="No speech found.";return;}
-            if(edit&&prefs.Rewrite&&WritingStyles.Normalize(prefs.Style)!="Original transcript") {
+            if(edit) {
                 Status="Applying "+StyleOptions.Selected(prefs)+"…";Signal();List<string> edited=new List<string>();
-                foreach(string part in MediaText.Parts(rules.Correct(source))){token.ThrowIfCancellationRequested();edited.Add(await Rewrite(part,prefs,vocabulary,token));}
+                foreach(string part in MediaText.Parts(source)){token.ThrowIfCancellationRequested();PreparedDictation prepared=rules.Prepare(part);string output=prefs.Rewrite&&WritingStyles.Normalize(prefs.Style)!="Original transcript"?await Rewrite(prepared.Text,prefs,vocabulary,token):prepared.Text;edited.Add(rules.Finish(output,prepared));}
                 Result=String.Join("\n\n",edited);
             }
             token.ThrowIfCancellationRequested();complete=true;finalStatus="Ready to copy";
@@ -101,25 +101,24 @@ public sealed class ActionProgress<T> : IProgress<T> {
 }
 public sealed class MediaImportPanel : Panel {
     readonly MediaImportController importer;
-    readonly Button choose=Theme.Button("Import file",true),stop=Theme.Button("Cancel"),copy=Theme.Button("Copy"),original=Theme.Button("Original");
+    readonly Button choose=Theme.Button("Import file",true),stop=Theme.Button("Cancel"),copy=Theme.Button("Copy modified"),original=Theme.Button("Copy original");
     readonly RedCheck edit=new RedCheck {Text="Use writing style",AutoSize=true,Checked=true};
     readonly Label status=new Label {AutoEllipsis=true,ForeColor=Theme.Muted};
     readonly TextBox result=new TextBox {ReadOnly=true,Multiline=true,ScrollBars=ScrollBars.Vertical,Tag="history-reader",BorderStyle=BorderStyle.None,BackColor=Color.White};
-    bool raw;
     public Action<int> HeightNeeded;
     public int DesiredHeight {get{return importer.Source.Length>0?180:94;}}
     public MediaImportPanel(MediaImportController controller) {
         importer=controller;Dock=DockStyle.Fill;Margin=Padding.Empty;BackColor=Color.White;AllowDrop=true;
         Controls.AddRange(new Control[]{choose,stop,copy,original,edit,status,result});
-        choose.Click+=(s,e)=>{using(OpenFileDialog dialog=new OpenFileDialog {Title="Import audio or video",Filter="Audio and video|*.wav;*.mp3;*.m4a;*.aac;*.mp4;*.mov;*.wma;*.wmv;*.flac;*.aif;*.aiff|All files|*.*",CheckFileExists=true})if(dialog.ShowDialog(FindForm())==DialogResult.OK){raw=false;importer.Start(dialog.FileName,edit.Checked);}};
-        stop.Click+=(s,e)=>importer.Cancel();original.Click+=(s,e)=>{raw=!raw;RefreshState();};
+        choose.Click+=(s,e)=>{using(OpenFileDialog dialog=new OpenFileDialog {Title="Import audio or video",Filter="Audio and video|*.wav;*.mp3;*.m4a;*.aac;*.mp4;*.mov;*.wma;*.wmv;*.flac;*.aif;*.aiff|All files|*.*",CheckFileExists=true})if(dialog.ShowDialog(FindForm())==DialogResult.OK)importer.Start(dialog.FileName,edit.Checked);};
+        stop.Click+=(s,e)=>importer.Cancel();original.Click+=(s,e)=>{try{TextClipboard.SetText(importer.Source);original.Text="Copied";}catch(System.Runtime.InteropServices.ExternalException){status.Text="Clipboard busy. Try again.";}};
         copy.Click+=(s,e)=>{try{TextClipboard.SetText(result.Text);copy.Text="Copied";}catch(System.Runtime.InteropServices.ExternalException){status.Text="Clipboard busy. Try again.";}};
         DragEnter+=(s,e)=>{if(!importer.Busy&&e.Data.GetDataPresent(DataFormats.FileDrop))e.Effect=DragDropEffects.Copy;};
-        DragDrop+=(s,e)=>{string[] files=e.Data.GetData(DataFormats.FileDrop) as string[];if(files!=null&&files.Length==1){raw=false;importer.Start(files[0],edit.Checked);}else status.Text="Import one file at a time.";};
+        DragDrop+=(s,e)=>{string[] files=e.Data.GetData(DataFormats.FileDrop) as string[];if(files!=null&&files.Length==1)importer.Start(files[0],edit.Checked);else status.Text="Import one file at a time.";};
         importer.Changed+=RefreshState;SizeChanged+=(s,e)=>Arrange();RefreshState();
     }
-    void RefreshState(){if(IsDisposed)return;choose.Enabled=edit.Enabled=!importer.Busy;stop.Visible=importer.Busy;copy.Visible=original.Visible=importer.Source.Length>0;copy.Text="Copy";original.Text=raw?"Result":"Original";result.Text=raw?importer.Source:importer.Result;status.Text=(importer.FileName.Length>0?importer.FileName+" · ":"Drop audio or video here · ")+importer.Status;if(HeightNeeded!=null)HeightNeeded(DesiredHeight);Arrange();}
-    void Arrange(){choose.SetBounds(0,0,116,36);edit.SetBounds(128,7,156,24);stop.SetBounds(290,0,88,36);copy.SetBounds(Math.Max(390,Width-176),0,78,36);original.SetBounds(Math.Max(478,Width-90),0,90,36);status.SetBounds(0,43,Width,24);result.Visible=result.Text.Length>0;result.SetBounds(0,76,Width,88);}
+    void RefreshState(){if(IsDisposed)return;choose.Enabled=edit.Enabled=!importer.Busy;stop.Visible=importer.Busy;copy.Visible=original.Visible=importer.Source.Length>0&&!importer.Busy;copy.Text="Copy modified";original.Text="Copy original";result.Text=importer.Result;status.Text=(importer.FileName.Length>0?importer.FileName+" · ":"Drop audio or video here · ")+importer.Status;if(HeightNeeded!=null)HeightNeeded(DesiredHeight);Arrange();}
+    void Arrange(){choose.SetBounds(0,0,116,36);edit.SetBounds(128,7,156,24);stop.SetBounds(290,0,88,36);copy.SetBounds(Width-274,0,132,36);original.SetBounds(Width-132,0,132,36);status.SetBounds(0,43,Width,24);result.Visible=result.Text.Length>0;result.SetBounds(0,76,Width,88);}
     protected override void Dispose(bool disposing){if(disposing)importer.Changed-=RefreshState;base.Dispose(disposing);}
 }
 }

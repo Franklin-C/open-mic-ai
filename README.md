@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/inference-local-26834a" alt="Local inference">
     <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license">
   </p>
-  <p><a href="https://github.com/Franklin-C/open-mic-ai/releases">Downloads</a> · <a href="docs/windows.md">Windows guide</a> · <a href="docs/macos.md">Mac guide</a> · <a href="#features">Features</a></p>
+  <p><a href="https://github.com/Franklin-C/open-mic-ai/releases">Downloads</a> · <a href="docs/windows.md">Windows guide</a> · <a href="docs/macos.md">Mac guide</a> · <a href="docs/formatting-examples.md">Formatting examples</a> · <a href="#features">Features</a></p>
 </div>
 
 ![Open Mic AI home and usage dashboard](docs/images/hub-home.png)
@@ -51,29 +51,28 @@ model selectors.
 | --- | --- |
 | **Raw transcript** | Speech-model text without AI editing. |
 | **Clean up** | Removes fillers and fixes grammar and punctuation. |
-| **Polish → My words** | Formatting, punctuation and capitalization with your own wording. No added words or invented heading labels. |
-| **Polish → Reworded** | Clearer phrasing plus context-aware formatting, while preserving meaning. |
+| **Polish** | AI rewriting and automatic formatting, while preserving your meaning. |
 | **Custom** | Your own instructions in an inline prompt box. |
 
 Polish always chooses the layout automatically from your message: sentences,
 paragraphs, lists, goals, instructions, recipes, reports, emails, tables, blog
 posts, essays, meeting notes, checklists, outlines, proposals, agendas, FAQs,
-social posts or scripts. Choose only **My words** or **Reworded** under
-**Settings → Style → Polish**. Auto uses the resident local LLM; there is no
-extra model download or format to select. Ordinary messages stay sentences;
-mentioning several names or objects does not make a bullet list. Supplied questions
-and answers can become an FAQ without saying “FAQ”. Tables include only supplied values and copy
-as rich tables in compatible editors, with plain-text tables for other fields.
-Polish keeps meaningful introductions, descriptions, quantities, conditions and closing
-requests. “My words” renders the model's layout with the original words when
-needed, and checks wording and completeness before accepting it. Reworded output
-still receives a local meaning check. Quantity corrections update an earlier list
+social posts or scripts. Select **Settings → Style → Polish** and speak. Auto uses
+the resident local LLM; there is no extra model download or format picker.
+Ordinary messages stay sentences. Supplied questions and answers can become an
+FAQ without saying “FAQ”. Tables use supplied values and copy as rich tables in
+compatible editors, with plain-text tables for other fields. Polish can improve
+phrasing while retaining meaningful introductions, quantities, conditions and
+closing requests. Output receives a local meaning check. Quantity corrections update an earlier list
 item instead of adding a duplicate. Failed dictation edits
 get one retry, then retain the transcript; rejected selected-text edits leave the
 original unchanged. Model checks reduce errors, but are not a guarantee of perfect
 meaning or speech recognition.
 
-![Polish and its wording options](docs/images/hub-style.png)
+![Automatic Polish style](docs/images/hub-style.png)
+
+See [all 19 layouts with example inputs and actual formatted outputs](docs/formatting-examples.md),
+with usage tips and the scope of the tests.
 
 ## The floating bar
 
@@ -120,7 +119,6 @@ image shows one frame of the recording and processing animations.
 | Personal vocabulary and spelling corrections | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Expand a spoken phrase into saved text | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Save and revisit dictation results | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Validate that formatting adds no new words | ✓ My words | - | - | - | - |
 | Cost | Free | Free tier; paid unlimited | Free local; paid cloud | Free dictation; paid AI | Paid app; free source build |
 | Open-source app | ✓ MIT | - | ✓ MIT | - | ✓ GPL-3.0 |
 | Automatically choose a style for each app | ✕ | ✓ | - | ✓ | ✓ |
@@ -133,6 +131,13 @@ formats depend on your operating system's installed media codecs. Imports stay i
 history when history saving is enabled; no audio copy is saved.
 
 ![Import a recording and copy its transcript inside History](docs/images/hub-import.png)
+
+Home shows the five newest dictations and local usage, including cumulative **AI
+input tokens, output tokens and total tokens**. Counts come from the language
+model and include layout planning and editing checks. Counting starts with this
+update; earlier usage is not estimated. History and imports have separate
+**Copy original** and **Copy modified** buttons. Vocabulary and snippets apply to
+Raw transcript, Clean up, Polish and Custom.
 
 ## Inside the app
 

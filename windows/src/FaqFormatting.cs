@@ -7,9 +7,10 @@ namespace LocalFlow {
 public static class FaqFormatting {
     public sealed class Pair {public string question,answer;}
     public sealed class Document {public string before,after;public Pair[] pairs;}
-    public static string Render(string json){
+    public static string Render(string json,bool pairsOnly=false){
         Document document;try{document=new JavaScriptSerializer().Deserialize<Document>(json);}catch{return null;}
         if(document==null||document.pairs==null||document.pairs.Length==0||document.pairs.Length>40||document.pairs.Any(p=>p==null||String.IsNullOrWhiteSpace(p.question)||p.question.IndexOfAny(new[]{'\r','\n'})>=0||p.answer==null))return null;
+        if(pairsOnly)document.before="";
         string body=String.Join("\n\n",document.pairs.Select(p=>p.question.Trim().TrimEnd('.','?',':')+"?"+(String.IsNullOrWhiteSpace(p.answer)?"":"\n"+p.answer.Trim())));
         string[] words=Regex.Matches(body,@"[\p{L}\p{M}\p{N}_]+(?:['’][\p{L}\p{M}\p{N}_]+)*").Cast<Match>().Select(m=>m.Value).ToArray();
         Match[] prefix=Regex.Matches(document.before??"",@"[\p{L}\p{M}\p{N}_]+(?:['’][\p{L}\p{M}\p{N}_]+)*").Cast<Match>().ToArray();

@@ -1,16 +1,27 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 using LocalFlow;
 
 public static class CoreChecks {
     public static void Main(){string root=Path.Combine(Path.GetTempPath(),"OpenMicAI-core-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);try{
         using(Models models=new Models(root))PolishRetryChecks.Run(models,(ok,name)=>{Console.WriteLine((ok?"PASS ":"FAIL ")+name);if(!ok)throw new Exception(name);}).GetAwaiter().GetResult();
-        Settings value=new Settings();if(value.PolishReworded)throw new Exception("My words must be the default");value.PolishReworded=true;StyleOptions.Apply(value,"Polish");value.Save(root);
+        Settings value=new Settings();if(!value.PolishReworded)throw new Exception("Automatic AI Polish must be the default");value.PolishReworded=false;StyleOptions.Apply(value,"Polish");value.Save(root);
         string path=Path.Combine(root,"preferences.json"),json=File.ReadAllText(path);File.WriteAllText(path,json.Insert(1,"\"PolishFormat\":\"Checklist\","));
         Settings saved=Settings.Load(root);if(!saved.PolishReworded||!StyleRouting.Resolve(saved,"fixture").PolishReworded)throw new Exception("Wording preferences must survive legacy format migration");saved.Save(root);if(File.ReadAllText(path).Contains("PolishFormat"))throw new Exception("Legacy manual formats must be discarded so layout is always automatic");
-        Console.WriteLine("PASS Polish wording preference persists and reaches routing");
+        Console.WriteLine("PASS Legacy Polish wording migrates to automatic AI formatting");
         if(SpokenAction.Parse("Could you translate this into Spanish, please?","French").Language!="Spanish"||SpokenAction.Parse("Please summarize this.","French").Action!="Summarize"||SpokenAction.Parse("Rewrite this as an email.","French").Action!="Rewrite"||SpokenAction.Parse("The invoice will arrive Friday.","French").Action!="Dictate")throw new Exception("Selected text voice commands must be distinguished from replacement dictation");Console.WriteLine("PASS Spoken cues distinguish rewrite, translation, summary and replacement dictation");
+        if(!TextActions.AutomaticRewrite("Please rewrite this.")||!TextActions.AutomaticRewrite("Could you reword this more clearly?")||TextActions.AutomaticRewrite("Change Saturday to Sunday.")||TextActions.AutomaticRewrite("Rewrite this as a formal email."))throw new Exception("Automatic formatting cues must not override specific voice edits");Console.WriteLine("PASS Plain rewrite cues use automatic Polish while specific instructions retain their edit path");
         MediaChecks.Run(root).GetAwaiter().GetResult();
+        Func<string,AiTokenUsage> parse=text=>AiTokenUsage.Read(new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(text));
+        AiTokenUsage counted=parse("{\"usage\":{\"prompt_tokens\":120,\"completion_tokens\":5,\"total_tokens\":999}}");
+        if(counted==null||counted.Input!=120||counted.Output!=5)throw new Exception("Use reported input and output, not an unrelated total");Console.WriteLine("PASS Token parser reads separate reported input and output");
+        foreach(string malformed in new[]{"{}","{\"usage\":{\"prompt_tokens\":20}}","{\"usage\":{\"prompt_tokens\":-1,\"completion_tokens\":2}}","{\"usage\":{\"prompt_tokens\":1.5,\"completion_tokens\":2}}","{\"usage\":{\"prompt_tokens\":\"12\",\"completion_tokens\":2}}","{\"usage\":{\"prompt_tokens\":true,\"completion_tokens\":2}}"})if(parse(malformed)!=null)throw new Exception("Missing or invalid metadata must not invent token counts");Console.WriteLine("PASS Missing and invalid token metadata are ignored without estimates");
+        File.WriteAllText(Path.Combine(root,"usage.json"),"{\"Words\":42,\"Sessions\":3}");UsageStore usage=new UsageStore(root);if(usage.TotalTokens!=0||usage.Data.Words!=42)throw new Exception("Old usage must load without guessed token counts");Console.WriteLine("PASS Old usage loads with zero token counts and existing statistics intact");
+        usage.Failed+=error=>Console.WriteLine("SAVE ERROR "+error);int changes=0;usage.Changed+=()=>changes++;usage.RecordAiTokens(counted);usage.RecordAiTokens(new AiTokenUsage(100,3));usage.RecordAiTokens(null);usage.RecordAiTokens(new AiTokenUsage(-1,2));usage.FlushAsync().GetAwaiter().GetResult();
+        UsageStore restored=new UsageStore(root);if(restored.Data.InputTokens!=220||restored.Data.OutputTokens!=8||restored.TotalTokens!=228||restored.Data.Words!=42||restored.Data.Sessions!=3||changes!=2)throw new Exception("Token totals must persist independently of dictation statistics: "+new JavaScriptSerializer().Serialize(restored.Data)+" changes="+changes+" disk="+File.ReadAllText(Path.Combine(root,"usage.json")));Console.WriteLine("PASS Input, output and total persist across restart without changing words or sessions");
+        restored.Clear();restored.FlushAsync().GetAwaiter().GetResult();if(new UsageStore(root).TotalTokens!=0)throw new Exception("Clear usage must clear token totals");Console.WriteLine("PASS Clear usage also resets saved token counts");
     }catch(Exception error){Console.WriteLine(error);Environment.ExitCode=1;}finally{foreach(string file in Directory.GetFiles(root))File.Delete(file);Directory.Delete(root);}}
 }

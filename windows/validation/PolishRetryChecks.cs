@@ -13,7 +13,7 @@ using System.Web.Script.Serialization;
 using LocalFlow;
 
 public static class PolishRetryChecks {
-    static string Completion(string text){return new JavaScriptSerializer().Serialize(new {choices=new[]{new {finish_reason="stop",message=new {content=text}}}});}
+    static string Completion(string text){return new JavaScriptSerializer().Serialize(new {usage=new {prompt_tokens=100,completion_tokens=3,total_tokens=103},choices=new[]{new {finish_reason="stop",message=new {content=text}}}});}
     static async Task Respond(TcpListener listener,string[] replies,List<string> requests){
         foreach(string reply in replies)using(TcpClient client=await listener.AcceptTcpClientAsync())using(NetworkStream stream=client.GetStream()){
             byte[] buffer=new byte[8192];using(MemoryStream bytes=new MemoryStream()){
@@ -71,6 +71,8 @@ public static class PolishRetryChecks {
         string question="Can you ask Nina Leo and Maya if they can join on Friday?",sentence="Can you ask Nina, Leo and Maya if they can join on Friday?";
         result=await Fixture(models,question,new[]{Completion("Can you ask:\n\n- Nina\n- Leo\n- Maya\n\nif they can join on Friday?"),Completion(sentence)},requests=>check(requests.Count==2,"A prose layout repairs an unwanted list once"));check(result==sentence,"Prose repair retains an ordinary question as a sentence");
         result=await Fixture(models,question,new[]{Completion("- Can you ask Nina Leo and Maya if they can join on Friday?"),Completion(sentence)},requests=>{},true);check(result==sentence,"Selected-text Polish uses the same prose repair as dictation");
+        long input=0,output=0;int responses=0;Action<AiTokenUsage> record=counts=>{input+=counts.Input;output+=counts.Output;responses++;};models.TokensUsed+=record;
+        try{result=await Fixture(models,question,new[]{Completion("- Can you ask Nina Leo and Maya if they can join on Friday?"),Completion(sentence)},requests=>{});check(responses==3&&input==300&&output==9,"Token accounting includes layout planning, rejected output and repair exactly once");}finally{models.TokensUsed-=record;}
         string markdown="Comparison\n\n| Name | Item |\n| --- | --- |\n| Zoë | <script>& café |";
         string html=TextClipboard.TableHtml(markdown),clipboard=TextClipboard.HtmlClipboard(html);
         check(html.Contains("<table")&&html.Contains("&lt;script&gt;&amp;")&&!html.Contains("<script>"),"Rich tables escape user content and retain the surrounding text");
@@ -80,6 +82,13 @@ public static class PolishRetryChecks {
         string table=TableFormatting.Render("{\"before\":\"Comparison table. Plan price storage. Basic five dollars ten gigabytes.\",\"headers\":[\"Plan\",\"price\",\"storage\"],\"rows\":[[\"Basic\",\"five dollars\",\"ten gigabytes\"]],\"after\":\"\"}");
         check(PolishLayout.Fits("table",table)&&Formatting.PolishContentComplete("Comparison table. Plan price storage. Basic five dollars ten gigabytes.",table),"Structured tables remove exact duplicated introductory content without losing source words");
         check(TableFormatting.Render("{\"before\":\"\",\"headers\":[\"A\",\"B\"],\"rows\":[[\"One\"]],\"after\":\"\"}")==null,"A mismatched cell count cannot produce a malformed table");
+        table=TableFormatting.Render("{\"before\":\"Comparison table. Plan price users. Basic five dollars two users. Team twelve dollars eight users. The prices are monthly and do not include support.\",\"headers\":[\"Plan\",\"price\",\"users\"],\"rows\":[[\"Basic\",\"five dollars\",\"two users\"],[\"Team\",\"twelve dollars\",\"eight users\"]],\"after\":\"\"}");
+        check(table.StartsWith("Comparison table.\n\n|")&&table.EndsWith("The prices are monthly and do not include support.")&&Regex.Matches(table,"Basic").Count==1,"Table deduplication retains closing qualifications after copied row data");
+        check(TableFormatting.Render("{\"before\":\"\",\"headers\":[\"\",\"Price\"],\"rows\":[[\"Basic\",\"five dollars\"]],\"after\":\"\"}",true).StartsWith("| Name | Price |"),"Automatic Polish names an empty table header");
+        string recipeSource="Chop two carrots, add stock, simmer for twenty minutes, blend until smooth, then taste before adding pepper.";
+        check(!PolishLayout.FitsSource("recipe",recipeSource,"1. Chop two carrots, add stock and simmer for twenty minutes.\n2. Blend until smooth, then taste before adding pepper.")&&PolishLayout.FitsSource("recipe",recipeSource,"1. Chop two carrots.\n2. Add stock.\n3. Simmer for twenty minutes.\n4. Blend until smooth.\n5. Taste before adding pepper."),"Multi-action recipes reject compressed steps and accept separate cooking actions");
+        string copiedOutline=OutlineFormatting.Render("{\"before\":\"The topics are privacy and speed. Under privacy include offline recording and local history. Under speed include loaded models. Keep the talk under ten minutes.\",\"groups\":[{\"topic\":\"Privacy\",\"items\":[\"Offline recording\",\"Local history\"]},{\"topic\":\"Speed\",\"items\":[\"Loaded models\"]}],\"after\":\"\"}");
+        check(Regex.Matches(copiedOutline,"recording").Count==1&&copiedOutline.Contains("Keep the talk under ten minutes.")&&!copiedOutline.Contains("Under privacy"),"Outlines remove exact duplicated topic clauses while preserving closing context");
         check(PolishLayout.Explicit("Travel checklist. Pack the passport.")=="checklist"&&PolishLayout.Explicit("The cafe had tables and chairs.")==null,"Explicit format requests route directly without turning ordinary nouns into a layout");
         string repeated="I plan to ride twice next week if it stays dry.";
         check(!Formatting.NoNewRepeatedSentences(repeated,repeated+"\n\n"+repeated)&&Formatting.NoNewRepeatedSentences(repeated+" "+repeated,repeated+"\n"+repeated),"Reworded cannot duplicate a source sentence but can preserve intentional repetition");

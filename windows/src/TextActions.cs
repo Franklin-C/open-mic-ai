@@ -6,6 +6,7 @@ using System.Web.Script.Serialization;
 
 namespace LocalFlow {
 public static class TextActions {
+    public static bool AutomaticRewrite(string command){return Regex.IsMatch(command??"",@"^\s*(?:(?:please|can you|could you)\s+)?(?:rewrite|reword|polish|format)(?:\s+(?:this|it|the selected text|this text))?(?:\s+(?:automatically|more clearly|clearly))?(?:[, ]+please)?[.!?\s]*$",RegexOptions.IgnoreCase);}
     public static readonly string[] Names={"Rewrite","Translate","Summarize"};
     public static readonly string[] ShortcutChoices={"Ctrl + Shift + A","Ctrl + Alt + A","Ctrl + Shift + F8"};
     public static readonly string[] Languages={"English","French","Spanish","German","Italian","Portuguese","Dutch","Polish","Ukrainian","Russian","Arabic","Hindi","Chinese","Japanese","Korean"};

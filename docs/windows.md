@@ -29,30 +29,26 @@ stopping after a pause. **Escape** cancels.
 ## Style and history
 
 Choose **Raw transcript**, **Clean up**, **Polish**, or **Custom** under
-**Settings → Style**. Polish has **My words** and **Reworded** options. My words
-keeps your wording. Both options automatically choose among 19 layouts from
-the message, including tables, blog posts, essays, meeting notes, checklists,
-outlines, proposals, agendas, FAQs and scripts. Ordinary messages stay sentences;
-mentioning several names or objects does not turn a message into a list.
-Questions paired with supplied answers can become an FAQ without naming the format.
-No format selection is needed, and old saved format choices are ignored.
-Auto uses your loaded local LLM. Tables use supplied data and paste as rich
-tables in compatible editors; other fields receive plain-text tables.
-My words recovers useful layout with your original words and checks
-wording and completeness. Reworded can improve phrasing and gets a local meaning
-review. Saying “actually, two bananas” updates the earlier banana item. Formatting may remove true fillers, list
-connectors and superseded corrections. It does not promise to fix transcription
-mistakes without changing words.
+**Settings → Style**. Polish rewrites and chooses a layout automatically using
+your loaded local LLM. It supports 19 purposes, including sentences, tables,
+recipes, FAQs, outlines and meeting notes. Ordinary messages stay prose; no
+format picker is needed. A local meaning check checks supplied facts and context.
+“Actually, two bananas” updates an earlier item. Vocabulary and snippets work in
+all four styles. See the [actual formatting examples](formatting-examples.md).
 
 Home shows local usage and the five newest dictations. History has search, date
-filtering, Copy and Original buttons. Snippets and vocabulary use inline editors.
-All settings and model downloads stay inside the app.
+filtering, Copy original and Copy modified buttons. Snippets and vocabulary use inline editors.
+Home also shows cumulative AI input, output and total tokens reported by the
+local model. Counts include planning, editing and verification calls. They start
+with this update; historical counts are not estimated. Disable usage saving or
+clear usage in Settings to control these saved counts. All settings and model
+downloads stay inside the app.
 
 In **History → Import file**, choose a local recording, or drop one onto the import
 area. Audio and video use Windows' installed codecs; WAV, MP3, M4A and MP4 are
 common supported formats. The first audio track is transcribed with your selected
 speech model. **Use writing style** optionally applies your current AI style.
-Progress, Cancel, Original and Copy stay inside History. Long recordings run in
+Progress, Cancel, Copy original and Copy modified stay inside History. Long recordings run in
 bounded chunks; cancelled or failed imports retain a partial transcript. Imported
 files are not automatically pasted into another app or included in dictation WPM.
 No audio copy is saved. Windows editions without Media Foundation need the Media

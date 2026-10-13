@@ -15,7 +15,7 @@ public sealed class Settings {
     public string ActionShortcut="Ctrl + Shift + A",QuickAction="Choose action",TranslationLanguage="English";
     public string RecordingMode="Click to start / stop";
     public bool WindowsNotifications=false;
-    public bool PolishReworded=false;
+    public bool PolishReworded=true;
     public int Microphone=-1;
     public int BarX=int.MinValue,BarY=int.MinValue;
     public bool Rewrite=true;
@@ -27,7 +27,7 @@ public sealed class Settings {
     public string HoldMouse="Off",Cleanup="Light";
     public string Speech="tdt-0.6b-v2-q8_0.gguf", Text="Qwen3-4B-Instruct-2507-Q3_K_S.gguf";
     public static Settings Load(string root) {
-        try { Settings value=new JavaScriptSerializer().Deserialize<Settings>(File.ReadAllText(Path.Combine(root,"preferences.json")));if(value==null)return new Settings();if(value.AppStyles==null)value.AppStyles=new List<AppStyle>();value.Style=value.Rewrite?WritingStyles.Normalize(value.Style):"Original transcript";if(!value.Rewrite||value.Style=="Original transcript")value.Cleanup="None";if(value.Cleanup!="None"&&value.Cleanup!="Medium")value.Cleanup="Light";return value; }
+        try { Settings value=new JavaScriptSerializer().Deserialize<Settings>(File.ReadAllText(Path.Combine(root,"preferences.json")));if(value==null)return new Settings();if(value.AppStyles==null)value.AppStyles=new List<AppStyle>();value.Style=value.Rewrite?WritingStyles.Normalize(value.Style):"Original transcript";if(!value.Rewrite||value.Style=="Original transcript")value.Cleanup="None";if(value.Cleanup!="None"&&value.Cleanup!="Medium")value.Cleanup="Light";value.PolishReworded=true;return value; }
         catch { return new Settings(); }
     }
     public void Save(string root) { File.WriteAllText(Path.Combine(root,"preferences.json"),new JavaScriptSerializer().Serialize(this)); }
@@ -151,6 +151,8 @@ public sealed class FlowContext : ApplicationContext {
             }
             if(models!=null)models.Dispose();models=new Models(root);models.Progress=t=>ui.Post(s=>SetStatus(t),null);
             SetStatus("Loading local models");await models.Boot(settings.Speech,settings.Text);if(exiting)return;
+            // Subscribe after warm-up; counters describe the user's AI work.
+            models.TokensUsed+=counts=>ui.Post(s=>{if(!exiting&&settings.SaveInsights)usage.RecordAiTokens(counts);},null);
             SetStatus("Ready · "+settings.Shortcut);
         }
         catch(OperationCanceledException){if(!exiting){SetStatus("Model warm-up timed out");Notify("Model warm-up took too long. Use Reload and warm up models in the tray to try again.");}}

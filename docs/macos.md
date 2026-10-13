@@ -33,7 +33,7 @@ be treated as Mac measurements.
 With text highlighted, the shortcut starts recording immediately. Say “rewrite
 this”, “translate into French”, or “summarize this”, or dictate replacement text.
 The three action buttons remain on the floating card. Polish automatically
-chooses the layout; Settings has only My words and Reworded, with no format picker.
+rewrites and chooses the layout; there is no format picker or wording toggle.
 Ordinary messages stay sentences, while supplied Q&A can become an FAQ.
 
 Selected-text actions use macOS accessibility. A changed selection, password
@@ -42,8 +42,8 @@ Translation and summary stay on the card. **Copy** is the fallback.
 
 In **History → Import file**, choose a local audio or video recording. The first
 audio track is decoded with macOS' installed codecs and transcribed locally.
-**Use writing style** optionally applies your current AI style. Use Original or
-Copy to retrieve either text, or Cancel to stop and keep a partial transcript.
+**Use writing style** optionally applies your current style, including vocabulary
+and snippets in all four styles. Use **Copy original** or **Copy modified** to retrieve either text, or Cancel to stop and keep a partial transcript.
 Long recordings run in chunks. No audio copy is saved, no automatic paste occurs,
 and imported audio does not affect dictation WPM. No speaker labels are generated.
 
@@ -66,3 +66,8 @@ still needs hands-on validation of microphone permissions, device switching,
 live transcription latency, accessibility and paste across common Mac apps.
 Windows-specific startup, side mouse buttons, sounds, playback mute and resumable
 downloads are not part of this initial Mac implementation.
+
+Home shows cumulative AI input, output and total tokens reported by the local
+model. Counts start with this update and are saved on your Mac. See the
+[formatting examples](formatting-examples.md) for Windows model results; these
+are not measurements of the Mac speech engine.

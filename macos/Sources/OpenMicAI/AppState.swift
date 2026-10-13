@@ -9,6 +9,7 @@ import OpenMicCore
     @Published var history: [HistoryEntry]
     @Published var snippets: [Snippet]
     @Published var vocabulary: [VocabularyWord]
+    @Published var aiTokens: AiTokenTotals
     @Published var page = "Home"
     @Published var section = "Style"
     @Published var phase = "idle"
@@ -49,8 +50,13 @@ import OpenMicCore
         var recommended = Preferences()
         if ProcessInfo.processInfo.physicalMemory < 12 * 1_073_741_824 { recommended.speechModel = "ggml-base.en.bin"; recommended.languageModel = "Qwen3-1.7B-Q4_K_M.gguf" }
         preferences = read("preferences.json", recommended); history = read("history.json", []); snippets = read("snippets.json", []); vocabulary = read("vocabulary.json", [])
+        preferences.reworded = true; aiTokens = read("ai-tokens.json", AiTokenTotals())
         models = try LocalModels(root: root)
         models.status = { [weak self] in self?.status = $0 }
+        models.tokensUsed = { [weak self] usage in
+            guard let self else { return }
+            self.aiTokens.add(usage); self.write("ai-tokens.json", self.aiTokens)
+        }
         hotkey.pressed = { [weak self] in self?.shortcut() }
         hotkey.released = { [weak self] in if let self, self.phase == "recording", self.recordingPreferences.recordingMode == .hold { self.finishRecording() } }
         do { try hotkey.register(code: preferences.keyCode, modifiers: preferences.keyModifiers) }
@@ -61,7 +67,7 @@ import OpenMicCore
         do { try JSONEncoder().encode(value).write(to: root.appendingPathComponent(name), options: .atomic) }
         catch { message = "Could not save locally: \(error.localizedDescription)" }
     }
-    func save() { write("preferences.json", preferences); if preferences.showBar { showBar() } else if phase == "idle" { hideBar() } }
+    func save() { preferences.reworded = true; write("preferences.json", preferences); if preferences.showBar { showBar() } else if phase == "idle" { hideBar() } }
     func saveLibrary() { write("snippets.json", snippets); write("vocabulary.json", vocabulary) }
     func addHistory(source: String, result: String, action: String, seconds: Double = 0) {
         if preferences.saveHistory { history.insert(HistoryEntry(source: source, result: result, action: action, duration: seconds), at: 0); history = Array(history.prefix(200)); write("history.json", history) }
@@ -117,6 +123,10 @@ import OpenMicCore
         for snippet in snippets.sorted(by: { $0.trigger.count > $1.trigger.count }) where !snippet.trigger.isEmpty { value = value.replacingOccurrences(of: "(?i)\\b\(NSRegularExpression.escapedPattern(for: snippet.trigger))\\b", with: NSRegularExpression.escapedTemplate(for: snippet.text), options: .regularExpression) }
         return value
     }
+    func editDictation(_ source: String, preferences: Preferences) async throws -> String {
+        let prepared = PersonalizedText(source, vocabulary: vocabulary, snippets: snippets)
+        return prepared.restore(try await models.transform(prepared.text, action: "Dictate", preferences: preferences))
+    }
     func finishRecording() {
         guard phase == "recording" else { return }
         timer?.invalidate(); timer = nil; audio.stop(); previewTask?.cancel(); epoch = UUID()
@@ -133,10 +143,10 @@ import OpenMicCore
                     let command = VoiceCommand.parse(transcript, language: recordingPreferences.translationLanguage)
                     var prefs = recordingPreferences; prefs.translationLanguage = command.language
                     let action = command.action
-                    let output = try await models.transform(action == "Dictate" ? expand(transcript) : selection, action: action, preferences: prefs, spoken: action == "Dictate" ? "" : transcript)
+                    let output = action == "Dictate" ? try await editDictation(transcript, preferences: prefs) : try await models.transform(selection, action: action, preferences: prefs, spoken: transcript)
                     await deliver(source: selection, output: output, action: action, target: target, current: current)
                 } else {
-                    let output = try await models.transform(expand(transcript), action: "Dictate", preferences: recordingPreferences)
+                    let output = try await editDictation(transcript, preferences: recordingPreferences)
                     await deliver(source: transcript, output: output, action: "Dictate", target: target, current: current, seconds: seconds)
                 }
             } catch { if epoch == current, !Task.isCancelled { phase = "result"; result = voiceInstruction ? selection : preview; message = error.localizedDescription } }
@@ -205,12 +215,10 @@ import OpenMicCore
                     try await self.acceptImport(text, chunk: chunk)
                 }
                 if importSource.isEmpty { importStatus = "No speech found."; return }
-                if edit && prefs.style != .raw {
+                if edit {
                     importStatus = "Applying \(prefs.style.rawValue)…"
-                    var corrected = importSource
-                    for word in words where !word.heard.isEmpty { corrected = corrected.replacingOccurrences(of: "(?i)\\b\(NSRegularExpression.escapedPattern(for: word.heard))\\b", with: NSRegularExpression.escapedTemplate(for: word.written), options: .regularExpression) }
                     var edited = [String]()
-                    for part in MediaText.parts(corrected) { try Task.checkCancellation(); edited.append(try await models.transform(part, action: "Dictate", preferences: prefs)) }
+                    for part in MediaText.parts(importSource) { try Task.checkCancellation(); edited.append(try await editDictation(part, preferences: prefs)) }
                     importResult = edited.joined(separator: "\n\n")
                 }
                 try Task.checkCancellation(); complete = true; importStatus = "Ready to copy"

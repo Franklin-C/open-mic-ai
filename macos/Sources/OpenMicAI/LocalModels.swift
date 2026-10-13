@@ -33,6 +33,7 @@ enum MicError: LocalizedError {
     private var languageURL = URL(string: "http://127.0.0.1:1")!
     private let key = UUID().uuidString
     var status: (String) -> Void = { _ in }
+    var tokensUsed: (AiTokenUsage) -> Void = { _ in }
     init(root: URL) throws { self.root = root; catalog = try ModelCatalog.load() }
     func installed(_ model: ModelFile) -> Bool {
         let attributes = try? FileManager.default.attributesOfItem(atPath: file(model).path)
@@ -117,12 +118,15 @@ enum MicError: LocalizedError {
     }
     func completion(_ messages: [[String: String]], schema: [String: Any]? = nil, maxTokens: Int? = nil) async throws -> String {
         var payload: [String: Any] = ["messages": messages, "stream": false, "temperature": 0.0, "max_tokens": maxTokens ?? (schema == nil ? 4096 : 40), "chat_template_kwargs": ["enable_thinking": false]]
+        if messages.contains(where: { ($0["content"] ?? "").contains("LF_SNIP_") }) { payload["messages"] = [["role": "system", "content": "Preserve every LF_SNIP_ placeholder exactly once, including all letters, digits and underscores. Its saved text will be inserted afterward."]] + messages }
         if let schema { payload["response_format"] = ["type": "json_schema", "json_schema": ["name": "meaning_check", "strict": true, "schema": schema]] }
         var request = URLRequest(url: languageURL.appendingPathComponent("v1/chat/completions")); request.httpMethod = "POST"
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization"); request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload); request.timeoutInterval = 120
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200, let value = try JSONSerialization.jsonObject(with: data) as? [String: Any], let choice = (value["choices"] as? [[String: Any]])?.first, choice["finish_reason"] as? String != "length", let message = choice["message"] as? [String: Any], let text = message["content"] as? String, !text.isEmpty else { throw MicError.message("The local model could not finish. Your original text is unchanged.") }
+        guard (response as? HTTPURLResponse)?.statusCode == 200, let value = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw MicError.message("The local model could not finish. Your original text is unchanged.") }
+        if let usage = AiTokenUsage.read(value) { tokensUsed(usage) }
+        guard let choice = (value["choices"] as? [[String: Any]])?.first, choice["finish_reason"] as? String != "length", let message = choice["message"] as? [String: Any], let text = message["content"] as? String, !text.isEmpty else { throw MicError.message("The local model could not finish. Your original text is unchanged.") }
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     func transform(_ source: String, action: String, preferences: Preferences, spoken: String = "") async throws -> String {
@@ -160,10 +164,10 @@ enum MicError: LocalizedError {
         for attempt in 0..<(polish ? 2 : 1) {
             var result = try await completion(messages)
             if polish && !ownWords { result = PolishLayout.removeUnrequestedClosing(source: text, result: result) }
-            if polish && !ownWords, PolishLayout.fits(layout, result), let projected = WordLayout.project(source: text, layout: result), PolishLayout.fits(layout, projected), PolishLayout.complete(source: text, result: projected) { sourceLayout = projected }
+            if polish && !ownWords, PolishLayout.fitsSource(layout, source: text, result: result), let projected = WordLayout.project(source: text, layout: result), PolishLayout.fitsSource(layout, source: text, result: projected), PolishLayout.complete(source: text, result: projected) { sourceLayout = projected }
             if ownWords, layout != "table", PolishLayout.fits(layout, result), (!WordGuard.preservesWords(source: text, result: result) || !PolishLayout.complete(source: text, result: result)), let projected = WordLayout.project(source: text, layout: result) { result = projected }
             let wordsOK = !ownWords || WordGuard.preservesWords(source: text, result: result)
-            if wordsOK && (!polish || PolishLayout.fits(layout, result)) {
+            if wordsOK && (!polish || PolishLayout.fitsSource(layout, source: text, result: result)) {
                 if ownWords && PolishLayout.complete(source: text, result: result) { return result }
                 if try await verify(source: text, result: result, action: action, polish: polish) { return result }
             }
@@ -185,8 +189,8 @@ enum MicError: LocalizedError {
         messages.insert(["role": "assistant", "content": #"{"before":"Compare these boxes by:","headers":["","weight","height"],"rows":[["Small","weighs two pounds","and measures ten inches"],["Large","weighs three pounds","and measures twenty inches"]],"after":""}"#], at: messages.count - 1)
         for _ in 0..<2 {
             let json = try await completion(messages, schema: schema, maxTokens: 4096)
-            if let result = TableFormatting.render(json) {
-                if !reworded && WordGuard.preservesWords(source: source, result: result) && PolishLayout.complete(source: source, result: result) { return result }
+            if let result = TableFormatting.render(json, nameEmptyHeaders: reworded) {
+                if !reworded && WordGuard.preservesWords(source: source, result: result) && PolishLayout.complete(source: source, result: result) && PolishLayout.fits("table", result) { return result }
                 if reworded { if try await verify(source: source, result: result, action: action, polish: true) { return result } }
             }
             messages.append(["role": "assistant", "content": json]); messages.append(["role": "user", "content": "Retry the ORIGINAL preserving every record and all content. \(reworded ? "No new facts or omitted details." : "Use only its words in their original order, no new labels or number conversions.")\n\(source)"])
@@ -226,14 +230,19 @@ enum MicError: LocalizedError {
             ("Here are questions and answers. Number one, what shape is the sign? The answer would be round. Number two is what size is the box The answer would be small.", #"{"before":"Here are questions and answers.","pairs":[{"question":"What shape is the sign","answer":"It is round."},{"question":"What size is the box","answer":"It is small."}],"after":""}"#, #"{"before":"Here are questions and answers.","pairs":[{"question":"Number one, what shape is the sign","answer":"The answer would be round."},{"question":"Number two is what size is the box","answer":"The answer would be small."}],"after":""}"#),
             ("FAQ about the class. Do I need a notebook? Yes, bring one. When does it start? At nine. Is there parking? We haven't confirmed parking.", #"{"before":"FAQ about the class.","pairs":[{"question":"Do I need a notebook","answer":"Yes, bring one."},{"question":"When does it start","answer":"At nine."},{"question":"Is there parking","answer":"We haven't confirmed parking."}],"after":""}"#, #"{"before":"FAQ about the class.","pairs":[{"question":"Do I need a notebook","answer":"Yes, bring one."},{"question":"When does it start","answer":"At nine."},{"question":"Is there parking","answer":"We haven't confirmed parking."}],"after":""}"#),
         ]
-        var messages = [["role": "system", "content": Prompts.editing(style: .polish, reworded: reworded, custom: "") + " Return FAQ JSON with before, pairs, after. Each pair contains question and its supplied answer. Separate all pairs. A question can lack a question mark in speech; identify it from wording. Preserve all meaningful context in before and after. Leave an answer empty if none is supplied. Never duplicate a question or invent an answer. My words retains original phrases such as 'Number two is' or 'The answer would be' rather than adding labels."]]
+        var messages = [["role": "system", "content": Prompts.editing(style: .polish, reworded: reworded, custom: "") + " Return FAQ JSON with before, pairs, after. Each pair contains question and its supplied answer. Separate all pairs. A question can lack a question mark in speech; identify it from wording. Preserve all meaningful context in before and after. Leave an answer empty if none is supplied. Never duplicate a question or invent an answer. The before field contains only an introduction, never the complete source or any question or answer. Ignore arbitrary speech punctuation inside a numbered question."]]
         for (source, rewritten, own) in examples { messages.append(["role": "user", "content": source]); messages.append(["role": "assistant", "content": reworded ? rewritten : own]) }
         messages.append(["role": "user", "content": source])
         for _ in 0..<2 {
             let json = try await completion(messages, schema: schema, maxTokens: 4096)
-            if let result = FaqFormatting.render(json) {
-                if !reworded && WordGuard.preservesWords(source: source, result: result) && PolishLayout.complete(source: source, result: result) { return result }
+            if var result = FaqFormatting.render(json) {
+                if !reworded && (!WordGuard.preservesWords(source: source, result: result) || !PolishLayout.complete(source: source, result: result)), let recovered = WordLayout.project(source: source, layout: result) { result = recovered }
+                if !reworded && WordGuard.preservesWords(source: source, result: result) && PolishLayout.complete(source: source, result: result) && PolishLayout.fits("faq", result) { return result }
                 if reworded { if try await verify(source: source, result: result, action: action, polish: true) { return result } }
+                if let pairs = FaqFormatting.render(json, pairsOnly: true), pairs != result {
+                    if reworded, try await verify(source: source, result: pairs, action: action, polish: true) { return pairs }
+                    if let recovered = WordLayout.project(source: source, layout: pairs), PolishLayout.complete(source: source, result: recovered), PolishLayout.fits("faq", recovered) { return recovered }
+                }
             }
             messages.append(["role": "assistant", "content": json]); messages.append(["role": "user", "content": "Retry the complete ORIGINAL. Keep every meaningful statement, pair each supplied question with only its own supplied answer and retain uncertainty. No invented answers or facts. My words keeps the original words and their order without adding labels.\n\(source)"])
         }

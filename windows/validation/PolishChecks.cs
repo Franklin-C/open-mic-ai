@@ -40,6 +40,27 @@ public static class PolishChecks {
         new[]{"social","For my Instagram caption: We are testing later library hours on Thursdays this month. Visit between six and eight and tell us how it works for you. This is a trial and permanent hours have not been decided."},
         new[]{"script","Maya says: The export failed again. Lee replies: Was it the large test file? Maya says: Yes, the small file worked. Lee replies: Let's check the logs before changing the release date."}
     };
+    public const string QuestionRegression="All right, question one. is what color is the sky. The answer is blue. Question two is what color is the ocean? The answer is also blue. Yeah.";
+    public static async Task Faq(Models models,Action<bool,string> check,Dictionary<string,object> report){
+        MethodInfo router=typeof(Models).GetMethod("ChoosePolishLayout",BindingFlags.Instance|BindingFlags.NonPublic);string source=Formatting.PreparePolish(QuestionRegression).Text;
+        report["route"]=await (Task<string>)router.Invoke(models,new object[]{source,CancellationToken.None});List<object> results=new List<object>();report["results"]=results;bool passed=true;
+        foreach(bool reworded in new[]{true})foreach(bool selected in new[]{false,true}){
+            string result=selected?await models.TransformSelection(source,"Rewrite","Smart formatting","","English",CancellationToken.None,"",reworded):await models.Rewrite(QuestionRegression,"Smart formatting","",CancellationToken.None,"","Medium",reworded);
+            bool paired=Regex.IsMatch(result,@"sky[^\n]*\?\n[^\n]*blue[^\n]*\n\n[^\n]*ocean[^\n]*\?\n[^\n]*blue",RegexOptions.IgnoreCase)&&Regex.Matches(result,@"\bblue\b",RegexOptions.IgnoreCase).Count==2;
+            results.Add(new {source=QuestionRegression,result,reworded,selected,paired});Console.WriteLine((paired?"PASS ":"FAIL ")+(reworded?"Reworded":"My words")+" "+(selected?"selected":"dictated")+" questions: "+result.Replace("\n"," | "));passed&=paired;
+        }
+        check(passed&&Convert.ToString(report["route"])=="faq","Automatic Polish pairs numbered spoken questions with their supplied answers");
+    }
+    public static async Task Tokens(Models models,Action<bool,string> check,Dictionary<string,object> report){
+        long input=0,output=0;int responses=0;Action<AiTokenUsage> record=counts=>{input+=counts.Input;output+=counts.Output;responses++;};models.TokensUsed+=record;
+        try{
+            await models.Rewrite("Could you send the blue folder to Maya before Friday?","Smart formatting","",CancellationToken.None,"","Medium",false);
+            await models.TransformSelection("Maya will send the invoice on Friday.","Translate","Smart formatting","","French",CancellationToken.None,"",false);
+            await models.TransformSelection("Maya will send the invoice on Friday. Lee will check the reference before it is sent.","Summarize","Smart formatting","","English",CancellationToken.None,"",false);
+            report["input_tokens"]=input;report["output_tokens"]=output;report["total_tokens"]=input+output;report["responses"]=responses;
+            check(responses>=5&&input>0&&output>0,"Resident local model reports token usage for planning, rewriting, translation, summary and checks");
+        }finally{models.TokensUsed-=record;}
+    }
     public static async Task Routes(Models models,Action<bool,string> check,Dictionary<string,object> report){
         MethodInfo router=typeof(Models).GetMethod("ChoosePolishLayout",BindingFlags.Instance|BindingFlags.NonPublic);List<object> results=new List<object>();List<string> failures=new List<string>();report["automatic_routes"]=results;
         foreach(string[] item in AutomaticCases.Concat(ProseCases.Select(source=>new[]{"prose",source}))){string layout=await (Task<string>)router.Invoke(models,new object[]{item[1],CancellationToken.None});results.Add(new {source=item[1],expected=item[0],layout});Console.WriteLine((layout==item[0]?"PASS ":"FAIL ")+"Auto "+item[0]+" -> "+layout);if(layout!=item[0])failures.Add(item[0]+" -> "+layout);}

@@ -2,6 +2,46 @@ import XCTest
 @testable import OpenMicCore
 
 final class CoreTests: XCTestCase {
+    func testRecipeStepsAndCopiedOutlineContext() throws {
+        let source = "Chop two carrots, add stock, simmer for twenty minutes, blend until smooth, then taste before adding pepper."
+        XCTAssertFalse(PolishLayout.fitsSource("recipe", source: source, result: "1. Chop two carrots, add stock and simmer for twenty minutes.\n2. Blend until smooth, then taste before adding pepper."))
+        XCTAssertTrue(PolishLayout.fitsSource("recipe", source: source, result: "1. Chop two carrots.\n2. Add stock.\n3. Simmer for twenty minutes.\n4. Blend until smooth.\n5. Taste before adding pepper."))
+        let outline = try XCTUnwrap(OutlineFormatting.render(#"{"before":"The topics are privacy and speed. Under privacy include offline recording and local history. Under speed include loaded models. Keep the talk under ten minutes.","groups":[{"topic":"Privacy","items":["Offline recording","Local history"]},{"topic":"Speed","items":["Loaded models"]}],"after":""}"#))
+        XCTAssertEqual(outline.components(separatedBy: "recording").count, 2)
+        XCTAssertTrue(outline.contains("Keep the talk under ten minutes."))
+        XCTAssertFalse(outline.contains("Under privacy"))
+        let table = try XCTUnwrap(TableFormatting.render(#"{"before":"","headers":["","Price"],"rows":[["Basic","five dollars"]],"after":""}"#, nameEmptyHeaders: true))
+        XCTAssertTrue(table.hasPrefix("| Name | Price |"))
+    }
+    func testPersonalizationAcrossEveryStyle() {
+        let words = [VocabularyWord(heard: "open mike", written: "Open Mic AI")]
+        let snippets = [Snippet(trigger: "my signature", text: "Thanks,\nAlex — alex@example.test")]
+        for style in WritingStyle.allCases {
+            let prepared = PersonalizedText("Send the open mike report. my signature", vocabulary: words, snippets: snippets)
+            XCTAssertEqual(prepared.restore(prepared.text), "Send the Open Mic AI report. Thanks,\nAlex — alex@example.test", style.rawValue)
+            XCTAssertEqual(prepared.restore("The model lost the placeholder."), prepared.restore(prepared.text))
+            XCTAssertEqual(prepared.restore(prepared.text + " " + prepared.text), prepared.restore(prepared.text))
+        }
+        let repeated = PersonalizedText("my signature and my signature", vocabulary: words, snippets: snippets)
+        XCTAssertEqual(repeated.restore(repeated.text), "Thanks,\nAlex — alex@example.test and Thanks,\nAlex — alex@example.test")
+        let literal = PersonalizedText("Write the literal words my signature and open mike", vocabulary: words, snippets: snippets)
+        XCTAssertEqual(literal.restore(literal.text), "Write the literal words my signature and open mike")
+    }
+    func testReportedAiTokens() throws {
+        let response = try JSONSerialization.jsonObject(with: Data(#"{"usage":{"prompt_tokens":120,"completion_tokens":5,"total_tokens":999}}"#.utf8)) as! [String: Any]
+        let usage = try XCTUnwrap(AiTokenUsage.read(response))
+        XCTAssertEqual(usage.input, 120); XCTAssertEqual(usage.output, 5)
+        for json in [#"{}"#, #"{"usage":{"prompt_tokens":20}}"#, #"{"usage":{"prompt_tokens":-1,"completion_tokens":2}}"#, #"{"usage":{"prompt_tokens":1.5,"completion_tokens":2}}"#, #"{"usage":{"prompt_tokens":"12","completion_tokens":2}}"#, #"{"usage":{"prompt_tokens":true,"completion_tokens":2}}"#] {
+            XCTAssertNil(AiTokenUsage.read(try JSONSerialization.jsonObject(with: Data(json.utf8)) as! [String: Any]))
+        }
+    }
+    func testAiTokensPersistAndDefaultToZero() throws {
+        var totals = try JSONDecoder().decode(AiTokenTotals.self, from: Data("{}".utf8))
+        XCTAssertEqual(totals.total, 0)
+        totals.add(AiTokenUsage(input: 120, output: 5)); totals.add(AiTokenUsage(input: 100, output: 3)); totals.add(AiTokenUsage(input: -1, output: 2))
+        let restored = try JSONDecoder().decode(AiTokenTotals.self, from: JSONEncoder().encode(totals))
+        XCTAssertEqual(restored.input, 220); XCTAssertEqual(restored.output, 8); XCTAssertEqual(restored.total, 228)
+    }
     func testFaqPairsAndUnansweredQuestions() throws {
         let faq = try XCTUnwrap(FaqFormatting.render(#"{"before":"Questions and answers.","pairs":[{"question":"What colour is the sky","answer":"Blue."},{"question":"Is parking confirmed","answer":"Not confirmed."},{"question":"Is lunch included","answer":""}],"after":""}"#))
         XCTAssertTrue(faq.contains("What colour is the sky?\nBlue.\n\nIs parking confirmed?\nNot confirmed.\n\nIs lunch included?"))
@@ -103,7 +143,7 @@ final class CoreTests: XCTestCase {
     func testModesHaveDifferentInstructions() {
         XCTAssertTrue(Prompts.editing(style: .polish, reworded: false, custom: "").contains("No added words"))
         XCTAssertTrue(Prompts.editing(style: .polish, reworded: true, custom: "").contains("Reword for clarity"))
-        XCTAssertEqual(Preferences().reworded, false)
+        XCTAssertEqual(Preferences().reworded, true)
         XCTAssertEqual(Preferences().keyModifiers, 4608)
         let value = Preferences()
         XCTAssertEqual(try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(value)).style, .polish)

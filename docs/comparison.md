@@ -35,10 +35,9 @@ and the app uses one global style. The app source is
 ### What Open Mic AI offers
 
 Open Mic AI packages unlimited local dictation, custom AI editing, translation,
-and summary without an account, paid license or subscription. Its My words mode
-also validates that accepted formatting adds no new words. We did not find a
-documented equivalent word validator in the competitors' sources; the table uses
-dashes rather than claiming those apps cannot preserve wording. OpenWhispr also
+and summary without an account, paid license or subscription. Polish chooses
+formatting automatically and checks meaning using the resident local model.
+OpenWhispr also
 offers free local processing. Superwhisper's offline AI is limited to Message and
 Mail; VoiceInk can use local custom prompts through a separate Ollama setup.
 

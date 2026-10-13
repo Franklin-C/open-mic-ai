@@ -1,4 +1,4 @@
-param([switch]$RetryOnly,[switch]$FormatsOnly,[switch]$RoutesOnly,[switch]$ProseOnly)
+param([switch]$RetryOnly,[switch]$FormatsOnly,[switch]$RoutesOnly,[switch]$ProseOnly,[switch]$TokensOnly,[switch]$FaqOnly,[switch]$QualityOnly,[switch]$TablesOnly,[switch]$OutlinesOnly,[switch]$SelectedOnly)
 $ErrorActionPreference='Stop'
 $appRoot=(Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $portable=Join-Path (Split-Path $appRoot) 'OpenMicAI-Portable.exe'
@@ -20,9 +20,9 @@ try {
     $arguments=@('/nologo','/target:exe','/platform:x64','/optimize+','/main:PolishProbe',('/out:'+$testExe))
     foreach($name in @('System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll','System.Web.Extensions.dll','System.Net.Http.dll','System.IO.Compression.dll','System.IO.Compression.FileSystem.dll','WPF\UIAutomationClient.dll','WPF\UIAutomationTypes.dll')){$arguments+='/reference:'+(Join-Path $framework $name)}
     $sources=@(Get-ChildItem -LiteralPath (Join-Path $appRoot 'src') -Filter '*.cs' | ForEach-Object {$_.FullName})
-    & $compiler @arguments @sources (Join-Path $PSScriptRoot 'PolishProbe.cs') (Join-Path $PSScriptRoot 'PolishChecks.cs') (Join-Path $PSScriptRoot 'PolishRetryChecks.cs')
+    & $compiler @arguments @sources (Join-Path $PSScriptRoot 'PolishProbe.cs') (Join-Path $PSScriptRoot 'PolishChecks.cs') (Join-Path $PSScriptRoot 'PolishRetryChecks.cs') (Join-Path $PSScriptRoot 'QualityChecks.cs')
     if($LASTEXITCODE-ne 0){throw 'Polish check compilation failed.'}
-    if($RetryOnly){& $testExe $connection (Join-Path $PSScriptRoot 'polish-retry-checks.json') 'retry'}elseif($FormatsOnly){& $testExe $connection (Join-Path $PSScriptRoot 'format-checks.json') 'formats'}elseif($RoutesOnly){& $testExe $connection (Join-Path $PSScriptRoot 'route-checks.json') 'routes'}elseif($ProseOnly){& $testExe $connection (Join-Path $PSScriptRoot 'prose-checks.json') 'prose'}else{& $testExe $connection (Join-Path $PSScriptRoot 'polish-checks.json')}
+    if($SelectedOnly){& $testExe $connection (Join-Path $PSScriptRoot "selected-checks.json") "selected"}elseif($OutlinesOnly){& $testExe $connection (Join-Path $PSScriptRoot "outline-checks.json") "outlines"}elseif($TablesOnly){& $testExe $connection (Join-Path $PSScriptRoot 'table-checks.json') 'tables'}elseif($QualityOnly){& $testExe $connection (Join-Path $PSScriptRoot 'quality-checks.json') 'quality'}elseif($FaqOnly){& $testExe $connection (Join-Path $PSScriptRoot 'faq-checks.json') 'faq'}elseif($TokensOnly){& $testExe $connection (Join-Path $PSScriptRoot 'token-checks.json') 'tokens'}elseif($RetryOnly){& $testExe $connection (Join-Path $PSScriptRoot 'polish-retry-checks.json') 'retry'}elseif($FormatsOnly){& $testExe $connection (Join-Path $PSScriptRoot 'format-checks.json') 'formats'}elseif($RoutesOnly){& $testExe $connection (Join-Path $PSScriptRoot 'route-checks.json') 'routes'}elseif($ProseOnly){& $testExe $connection (Join-Path $PSScriptRoot 'prose-checks.json') 'prose'}else{& $testExe $connection (Join-Path $PSScriptRoot 'polish-checks.json')}
     if($LASTEXITCODE-ne 0){throw 'Polish checks failed; inspect polish-checks.json.'}
 } finally {
     $resolved=(Resolve-Path -LiteralPath $fixture).Path

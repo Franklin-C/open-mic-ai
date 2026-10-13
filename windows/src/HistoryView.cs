@@ -6,28 +6,26 @@ using System.Windows.Forms;
 namespace LocalFlow {
 public sealed class HistoryResultRow : Panel {
     public readonly HistoryEntry Entry;
-    readonly TextBox result,original,command;
-    readonly Label metadata,originalHeading,commandHeading;
-    readonly Button more,originalToggle,copyOriginal,copyCommand;
+    readonly TextBox result;
+    readonly string original,command;
+    readonly Label metadata;
+    readonly Button more,copyOriginal,copyCommand;
     readonly FlowLayoutPanel actions;
-    bool expanded,showOriginal,layingOut;
+    bool expanded,layingOut;
     public HistoryResultRow(HistoryEntry entry,Action<string> remove,Action<string> feedback) {
         Entry=entry;Tag=entry;BackColor=Color.White;Margin=new Padding(0,0,0,12);Width=650;
         metadata=new Label {Text=entry.CreatedUtc.ToLocalTime().ToString("h:mm tt")+" · "+Mode(entry.Mode),ForeColor=Theme.Muted,AutoEllipsis=true};
         result=Reader("Result",String.IsNullOrEmpty(entry.Result)?entry.Transcript:entry.Result);
-        original=Reader("Original",entry.VoiceEdit&&!String.IsNullOrEmpty(entry.SelectedText)?entry.SelectedText:entry.Transcript);
+        original=(entry.VoiceEdit&&!String.IsNullOrEmpty(entry.SelectedText)?entry.SelectedText:entry.Transcript)??"";
         bool voiceCommand=entry.VoiceEdit&&!String.IsNullOrEmpty(entry.SelectedText)&&entry.Transcript!=entry.SelectedText;
-        command=Reader("Recorded instruction",voiceCommand?entry.Transcript:"");
-        originalHeading=new Label {Text=entry.VoiceEdit?"Original text":"Original transcript",ForeColor=Theme.Muted};
-        commandHeading=new Label {Text="Recorded instruction",ForeColor=Theme.Muted};
-        actions=new FlowLayoutPanel {WrapContents=false,Margin=Padding.Empty};
-        Button copy=Theme.Button("Copy"),delete=Theme.Button("Delete");copy.Name="Copy result";delete.Name="Delete entry";
-        originalToggle=Theme.Button("Original");originalToggle.Name="Show original";more=Theme.Button("Show more");more.Name="Show more";
+        command=voiceCommand?entry.Transcript:"";
+        actions=new FlowLayoutPanel {WrapContents=true,Margin=Padding.Empty};
+        Button copy=Theme.Button("Copy modified"),delete=Theme.Button("Delete");copy.Name="Copy modified";delete.Name="Delete entry";
+        more=Theme.Button("Show more");more.Name="Show more";
         copyOriginal=Theme.Button("Copy original");copyOriginal.Name="Copy original";copyCommand=Theme.Button("Copy instruction");
-        copy.Click+=(s,e)=>Copy(result.Text,copy,feedback);copyOriginal.Click+=(s,e)=>Copy(original.Text,copyOriginal,feedback);copyCommand.Click+=(s,e)=>Copy(command.Text,copyCommand,feedback);
+        copyCommand.Name="Copy instruction";copy.Click+=(s,e)=>Copy(result.Text,copy,feedback);copyOriginal.Click+=(s,e)=>Copy(original,copyOriginal,feedback);copyCommand.Click+=(s,e)=>Copy(command,copyCommand,feedback);
         delete.Click+=(s,e)=>remove(entry.Id);more.Click+=(s,e)=>{expanded=!expanded;more.Text=expanded?"Show less":"Show more";Arrange();};
-        originalToggle.Click+=(s,e)=>{showOriginal=!showOriginal;originalToggle.Text=showOriginal?"Hide original":"Original";Arrange();};
-        actions.Controls.AddRange(new Control[]{copy,originalToggle,more,delete});Controls.AddRange(new Control[]{metadata,result,actions,originalHeading,original,copyOriginal,commandHeading,command,copyCommand});
+        actions.Controls.AddRange(new Control[]{copy,copyOriginal,copyCommand,more,delete});Controls.AddRange(new Control[]{metadata,result,actions});
         SizeChanged+=(s,e)=>Arrange();Arrange();
         Paint+=(s,e)=>{using(System.Drawing.Drawing2D.GraphicsPath shape=Theme.Round(new Rectangle(1,1,Width-3,Height-3),9))using(Pen line=new Pen(Theme.Line))e.Graphics.DrawPath(line,shape);};
     }
@@ -39,11 +37,8 @@ public sealed class HistoryResultRow : Panel {
         try {
             int width=Math.Max(160,Width-32),full=TextHeight(result),height=expanded?Math.Min(400,full):Math.Min(62,full);
             metadata.SetBounds(16,12,width,22);result.SetBounds(16,39,width,height);result.ScrollBars=expanded&&full>height?ScrollBars.Vertical:ScrollBars.None;
-            more.Visible=full>62;originalToggle.Visible=original.Text.Length>0;
-            int y=39+height+10;actions.SetBounds(14,y,width,38);y+=48;
-            originalHeading.Visible=original.Visible=copyOriginal.Visible=showOriginal;
-            commandHeading.Visible=command.Visible=copyCommand.Visible=showOriginal&&command.Text.Length>0;
-            if(showOriginal){originalHeading.SetBounds(16,y,width,24);y+=26;int originalHeight=Math.Min(280,TextHeight(original));original.SetBounds(16,y,width,originalHeight);original.ScrollBars=TextHeight(original)>originalHeight?ScrollBars.Vertical:ScrollBars.None;y+=originalHeight+8;copyOriginal.SetBounds(14,y,132,36);y+=48;if(command.Text.Length>0){commandHeading.SetBounds(16,y,width,24);y+=26;int commandHeight=Math.Min(200,TextHeight(command));command.SetBounds(16,y,width,commandHeight);command.ScrollBars=TextHeight(command)>commandHeight?ScrollBars.Vertical:ScrollBars.None;y+=commandHeight+8;copyCommand.SetBounds(14,y,152,36);y+=48;}}
+            more.Visible=full>62;copyOriginal.Visible=original.Length>0;copyCommand.Visible=command.Length>0;
+            int y=39+height+10,actionHeight=Math.Max(38,actions.GetPreferredSize(new Size(width,0)).Height);actions.SetBounds(14,y,width,actionHeight);y+=actionHeight+10;
             Height=y+3;
         } finally {layingOut=false;}
     }

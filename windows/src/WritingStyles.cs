@@ -16,7 +16,7 @@ public static class WritingStyles {
     public static string Description(string name) {
         switch(Normalize(name)) {
             case "Keep my wording":return "Keep your words and tone. Remove fillers, fix grammar and punctuation, follow corrections, and format your intent.";
-            case "Smart formatting":return "Your words, neatly formatted. No added wording.";
+            case "Smart formatting":return "AI rewriting and automatic formatting based on your intent.";
             case "Professional":return "Polished business wording with your facts and intent.";
             case "Friendly":return "Warm, natural wording without adding promises or facts.";
             case "Casual":return "Relaxed, conversational wording. Keep your meaning.";

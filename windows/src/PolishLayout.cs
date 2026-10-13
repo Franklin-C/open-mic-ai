@@ -46,12 +46,21 @@ public static class PolishLayout {
             case "checklist":return "Put each actionable task on a separate '- [ ] ' checklist line. Keep context, due dates, quantities and conditions. Do not mark tasks completed unless the source explicitly says they are complete.";
             case "outline":return "Use an outline with indented '- ' bullets for main points and subpoints. Preserve the hierarchy described in the source. Use only existing topic words as headings in My words. Do not invent supporting details.";
             case "list":case "goals":return "Use '- ' bullet lines for each independent item, goal or task. Keep the introductory and closing prose, quantities and conditions. Do not leave the items embedded in one paragraph.";
-            case "steps":case "recipe":return "Use a numbered procedure: '1. ', '2. ', etc. Put each sequential action on its own line. Preserve the introduction and any warnings, timing or conditions. If ingredients are separately listed, use bullets for them. Do not invent ingredients, measurements, durations or steps. Do not leave the procedure embedded in one paragraph.";
+            case "recipe":return "Use numbered cooking steps, one primary action per line. Chopping, adding ingredients, simmering, blending and tasting are separate steps, even if dictated in one sentence. Do not compress a whole recipe into one or two long steps. Keep quantities, temperatures, timing, conditions and warnings with their action. Keep an introduction and separately supplied ingredients if present. Do not invent ingredients, measurements, durations or steps.";
+            case "steps":return "Use a numbered procedure: '1. ', '2. ', etc. Put each sequential action on its own line. Preserve the introduction and any warnings, timing or conditions. Do not invent actions. Do not leave the procedure embedded in one paragraph.";
             case "sections":return "Use separate sections for distinct topics and '- ' bullets for independent issues or actions. A report or status update is not a numbered procedure: do not number its facts. In My words, headings may use only existing source topic words; use paragraph breaks if no heading words are available.";
             case "email":return "Separate the greeting, message body and closing with blank lines. Keep only the supplied greeting and sign-off.";
             case "paragraphs":return "Split distinct ideas into readable paragraphs with blank lines. Use natural sentences. Preserve the narrative; do not turn it into bullets or summarize it.";
             default:return "Use natural sentences and paragraph breaks. Keep a short message or question simple; do not force a list or heading.";
         }
+    }
+    public static bool FitsSource(string layout,string source,string text){
+        if(!Fits(layout,text))return false;
+        if(layout=="recipe"){
+            int actions=Regex.Matches(source??"",@"\b(?:wash|rinse|chop|put|add|bring|boil|reduce|simmer|leave|cook|drain|stir|blend|taste|bake|mix|heat|pour|serve)\b",RegexOptions.IgnoreCase).Count;
+            if(actions>=4&&Regex.Matches(text??"",@"(?m)^\s*\d+[.)]\s").Count<(actions+1)/2)return false;
+        }
+        return true;
     }
     public static bool Fits(string layout,string text){
         if(layout=="prose"||layout=="paragraphs"){

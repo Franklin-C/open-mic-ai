@@ -3,8 +3,9 @@ import Foundation
 public enum FaqFormatting {
     private struct Pair: Decodable { let question: String; let answer: String }
     private struct Document: Decodable { var before: String; let pairs: [Pair]; let after: String }
-    public static func render(_ json: String) -> String? {
+    public static func render(_ json: String, pairsOnly: Bool = false) -> String? {
         guard var document = try? JSONDecoder().decode(Document.self, from: Data(json.utf8)), !document.pairs.isEmpty, document.pairs.count <= 40, document.pairs.allSatisfy({ !$0.question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.question.rangeOfCharacter(from: .newlines) == nil }) else { return nil }
+        if pairsOnly { document.before = "" }
         let body = document.pairs.map { pair in
             let question = pair.question.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: ".?:")) + "?"
             return question + (pair.answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : "\n" + pair.answer.trimmingCharacters(in: .whitespacesAndNewlines))

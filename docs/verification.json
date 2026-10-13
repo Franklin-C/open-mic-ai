@@ -1,20 +1,27 @@
 {
+  "version": "3.7.0",
   "windows": {
     "complete": true,
-    "scope": "Native isolated fixtures, canvas selection fallback, immediate selected-text recording and spoken replacement, and resident local-model synthetic text. All 19 automatically inferred formats were checked in both wording modes for dictation and selected-text rewriting: 98 format outputs, plus 32 ordinary-message outputs. Suite counts overlap. No user history is published.",
+    "scope": "Synthetic transcribed text with resident Qwen3-4B-Instruct-2507-Q3_K_S, isolated native UI/paste fixtures and offline guards. All 19 automatic layouts: three dictated examples each, 19 selected rewrites, eight ordinary messages, and vocabulary/snippets in all four styles. Additional checks exercise the spoken rewrite entry point and repaired table/outline renderers. Counts overlap; these are not speech-accuracy measurements or results for every model. No user history is published.",
     "checks_by_suite": {
-      "history-checks": 170,
-      "text-action-checks": 147,
-      "polish-checks": 91,
-      "core-checks": 82,
-      "model-loading-checks": 21,
+      "history-checks": 171,
+      "core-checks": 93,
       "media-import-checks": 26,
-      "automatic-format-checks": 292,
-      "automatic-routing-checks": 28
+      "quality-model-cases": 88,
+      "spoken-selected-layout-cases": 19,
+      "table-regression-cases": 4,
+      "outline-regression-cases": 4
+    },
+    "ai_tokens": {
+      "live_reported_completion_responses": 6,
+      "input": 2718,
+      "output": 72,
+      "total": 2790,
+      "persistence_migration_opt_out_and_clear": "Checked with synthetic fixtures"
     }
   },
   "macos": {
-    "scope": "Native builds, Swift word-guard and media-decoder tests, package resource checks and engine executable checks. Real-device microphone and paste testing remains.",
+    "scope": "Native builds, Swift formatting/personalization/token and media-decoder tests, package resources and engine executable checks. Real-device microphone and paste testing remains. Windows model results are not Mac speech-engine measurements.",
     "status": "Preview",
     "build_workflow": "https://github.com/Franklin-C/open-mic-ai/actions/workflows/build.yml"
   }

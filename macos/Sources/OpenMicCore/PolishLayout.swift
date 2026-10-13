@@ -44,12 +44,23 @@ public enum PolishLayout {
         case "checklist": return "Put each actionable task on a separate '- [ ] ' checklist line. Keep context, due dates, quantities and conditions. Do not mark tasks completed unless the source explicitly says they are complete."
         case "outline": return "Use an outline with indented '- ' bullets for main points and subpoints. Preserve the hierarchy described in the source. Use only existing topic words as headings in My words. Do not invent supporting details."
         case "list", "goals": return "Put each item, goal or task on its own '- ' bullet line. Keep introductory and closing prose, quantities and conditions. Do not leave the items embedded in a paragraph."
-        case "steps", "recipe": return "Use numbered steps with each sequential action on its own line. Keep the introduction, warnings, timing and conditions. Use bullets for separately stated ingredients. Never invent ingredients, quantities or steps."
+        case "recipe": return "Use numbered cooking steps, one primary action per line. Chopping, adding ingredients, simmering, blending and tasting are separate steps, even if dictated in one sentence. Do not compress a whole recipe into one or two long steps. Keep quantities, temperatures, timing, conditions and warnings with their action. Keep an introduction and separately supplied ingredients if present. Do not invent ingredients, measurements, durations or steps."
+        case "steps": return "Use a numbered procedure, one sequential action per line. Preserve context, timing, conditions and warnings. Do not invent actions or leave the procedure embedded in a paragraph."
         case "sections": return "Separate distinct topics into sections, with bullets for issues and actions. Do not number the facts in a report. In My words, headings must use existing source words; use paragraphs if no heading words are available."
         case "email": return "Separate the greeting, body and closing with blank lines. Keep only the supplied greeting and sign-off."
         case "paragraphs": return "Split distinct ideas into readable paragraphs with blank lines. Preserve the narrative; do not summarize it or turn it into bullets."
         default: return "Use natural sentences and paragraph breaks. Keep short messages and questions simple."
         }
+    }
+    public static func fitsSource(_ layout: String, source: String, result: String) -> Bool {
+        guard fits(layout, result) else { return false }
+        if layout == "recipe" {
+            let verbs = try! NSRegularExpression(pattern: #"\b(?:wash|rinse|chop|put|add|bring|boil|reduce|simmer|leave|cook|drain|stir|blend|taste|bake|mix|heat|pour|serve)\b"#, options: .caseInsensitive)
+            let steps = try! NSRegularExpression(pattern: #"(?m)^\s*\d+[.)]\s"#)
+            let actions = verbs.numberOfMatches(in: source, range: NSRange(source.startIndex..., in: source))
+            if actions >= 4 && steps.numberOfMatches(in: result, range: NSRange(result.startIndex..., in: result)) < (actions+1)/2 { return false }
+        }
+        return true
     }
     public static func fits(_ layout: String, _ result: String) -> Bool {
         if layout == "prose" || layout == "paragraphs" {

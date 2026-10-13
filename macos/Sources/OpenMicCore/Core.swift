@@ -8,7 +8,7 @@ public enum RecordingMode: String, CaseIterable, Codable {
 }
 public struct Preferences: Codable {
     public var style: WritingStyle = .polish
-    public var reworded = false
+    public var reworded = true
     public var custom = ""
     public var recordingMode: RecordingMode = .toggle
     public var keyCode: UInt32 = 49

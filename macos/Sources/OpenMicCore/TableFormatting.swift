@@ -1,13 +1,22 @@
 import Foundation
 
 public enum TableFormatting {
-    private struct Plan: Decodable { var before: String; let headers: [String]; let rows: [[String]]; let after: String }
-    public static func render(_ json: String) -> String? {
+    private struct Plan: Decodable { var before: String; var headers: [String]; let rows: [[String]]; var after: String }
+    public static func render(_ json: String, nameEmptyHeaders: Bool = false) -> String? {
         guard var plan = try? JSONDecoder().decode(Plan.self, from: Data(json.utf8)), (2...12).contains(plan.headers.count), !plan.rows.isEmpty, plan.rows.allSatisfy({ $0.count == plan.headers.count }), (plan.headers + plan.rows.flatMap { $0 }).allSatisfy({ !$0.contains("|") && !$0.contains("\n") && !$0.contains("\r") }) else { return nil }
         let expression = try! NSRegularExpression(pattern: #"[\p{L}\p{M}\p{N}_]+(?:['’][\p{L}\p{M}\p{N}_]+)*"#)
         let body = WordGuard.words((plan.headers + plan.rows.flatMap { $0 }).joined(separator: " "))
         let prefix = expression.matches(in: plan.before, range: NSRange(plan.before.startIndex..., in: plan.before))
-        if !body.isEmpty && prefix.count >= body.count && WordGuard.words(plan.before).suffix(body.count).elementsEqual(body) { plan.before = (plan.before as NSString).substring(to: prefix[prefix.count-body.count].range.location).trimmingCharacters(in: .whitespacesAndNewlines) }
+        let words = WordGuard.words(plan.before)
+        if !body.isEmpty && prefix.count >= body.count {
+            for start in 0...(prefix.count-body.count) where Array(words[start..<(start+body.count)]) == body {
+                let closing = (plan.before as NSString).substring(from: NSMaxRange(prefix[start+body.count-1].range)).trimmingCharacters(in: CharacterSet(charactersIn: " .,:;\r\n"))
+                plan.before = (plan.before as NSString).substring(to: prefix[start].range.location).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !closing.isEmpty && closing.caseInsensitiveCompare(plan.after.trimmingCharacters(in: .whitespacesAndNewlines)) != .orderedSame { plan.after = [closing, plan.after].filter { !$0.isEmpty }.joined(separator: "\n\n") }
+                break
+            }
+        }
+        if nameEmptyHeaders { for i in plan.headers.indices where plan.headers[i].trimmingCharacters(in: .whitespaces).isEmpty { plan.headers[i] = i == 0 ? "Name" : "Value \(i+1)" } }
         func row(_ cells: [String]) -> String { "| " + cells.map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: " | ") + " |" }
         var output = [String]()
         if !plan.before.isEmpty { output.append(plan.before + "\n") }
