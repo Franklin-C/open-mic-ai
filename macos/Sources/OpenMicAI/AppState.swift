@@ -49,8 +49,10 @@ import OpenMicCore
         func read<T: Decodable>(_ name: String, _ fallback: T) -> T { (try? JSONDecoder().decode(T.self, from: Data(contentsOf: dataRoot.appendingPathComponent(name)))) ?? fallback }
         var recommended = Preferences()
         if ProcessInfo.processInfo.physicalMemory < 12 * 1_073_741_824 { recommended.speechModel = "ggml-base.en.bin"; recommended.languageModel = "Qwen3-1.7B-Q4_K_M.gguf" }
-        preferences = read("preferences.json", recommended); history = read("history.json", []); snippets = read("snippets.json", []); vocabulary = read("vocabulary.json", [])
-        preferences.reworded = true; aiTokens = read("ai-tokens.json", AiTokenTotals())
+        var savedPreferences = read("preferences.json", recommended)
+        savedPreferences.reworded = true
+        preferences = savedPreferences; history = read("history.json", []); snippets = read("snippets.json", []); vocabulary = read("vocabulary.json", [])
+        aiTokens = read("ai-tokens.json", AiTokenTotals())
         models = try LocalModels(root: root)
         models.status = { [weak self] in self?.status = $0 }
         models.tokensUsed = { [weak self] usage in

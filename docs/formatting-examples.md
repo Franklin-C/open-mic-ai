@@ -182,13 +182,13 @@ Progress the beta is ready and the design is approved. Blockers the export fails
 
 **Actual Polish output**
 
-> Progress  
+> Progress\
 > The beta is ready and the design is approved.
 >
-> Blockers  
+> Blockers\
 > The export fails on large files.
 >
-> Next actions  
+> Next actions\
 > - Maya will check the logs on Friday
 > - Lee will test the fix
 >
@@ -211,7 +211,7 @@ Hi Maya, could you send the revised invoice before Friday? Please keep reference
 >
 > Could you send the revised invoice before Friday? Please keep reference 7319 on it.
 >
-> Thanks,  
+> Thanks,\
 > Alex
 
 <a id="table"></a>
@@ -381,10 +381,10 @@ All right, question one. is what color is the sky. The answer is blue. Question 
 
 **Actual Polish output**
 
-> What color is the sky?  
+> What color is the sky?\
 > Blue
 >
-> What color is the ocean?  
+> What color is the ocean?\
 > Blue
 
 <a id="social"></a>
@@ -400,9 +400,9 @@ For my Instagram caption: We are testing later library hours on Thursdays this m
 
 **Actual Polish output**
 
-> For my Instagram caption:  
-> We are testing later library hours on Thursdays this month.  
-> Visit between six and eight and tell us how it works for you.  
+> For my Instagram caption:\
+> We are testing later library hours on Thursdays this month.\
+> Visit between six and eight and tell us how it works for you.\
 > This is a trial, and permanent hours have not been decided.
 
 <a id="script"></a>
@@ -418,9 +418,9 @@ Maya says: The export failed again. Lee replies: Was it the large test file? May
 
 **Actual Polish output**
 
-> Maya says: The export failed again.  
-> Lee replies: Was it the large test file?  
-> Maya says: Yes, the small file worked.  
+> Maya says: The export failed again.\
+> Lee replies: Was it the large test file?\
+> Maya says: Yes, the small file worked.\
 > Lee replies: Let's check the logs before changing the release date.
 
 ## If your result differs
