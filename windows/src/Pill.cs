@@ -85,7 +85,7 @@ public sealed class Pill : Form {
     }
     static void PaintAction(Graphics g,Font font,Rectangle area,string text,bool accent){using(GraphicsPath shape=Theme.Round(area,7)){using(Brush fill=new SolidBrush(accent?Color.FromArgb(255,240,242):Color.White))g.FillPath(fill,shape);using(Pen line=new Pen(Theme.Line))g.DrawPath(line,shape);}TextRenderer.DrawText(g,text,font,area,accent?Theme.Accent:Theme.Ink,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter|TextFormatFlags.EndEllipsis);}
     void PaintIdleIcon(Graphics g,Rectangle area,bool app,bool enabled){
-        if(enabled&&area.Contains(hoverLocation))using(GraphicsPath shape=Theme.Round(area,6))using(Brush fill=new SolidBrush(Theme.Surface))g.FillPath(fill,shape);
+        if(enabled&&area.Contains(hoverLocation))using(GraphicsPath shape=Theme.Round(area,6)){using(Brush fill=new SolidBrush(Color.FromArgb(255,244,245)))g.FillPath(fill,shape);using(Pen edge=new Pen(Color.FromArgb(247,227,230)))g.DrawPath(edge,shape);}
         if(app){if(Brand.Logo!=null)g.DrawImage(Brand.Logo,new Rectangle(area.Left+3,area.Top+4,22,22));return;}
         PaintCopyIcon(g,new Point(area.Left+6,area.Top+7),enabled?Theme.Ink:Color.FromArgb(185,188,197),recentCopiedUntil>DateTime.UtcNow);
     }
@@ -101,10 +101,9 @@ public sealed class Pill : Form {
     }
     void PaintDictate(Graphics g){
         Rectangle area=DictateBounds;bool hot=area.Contains(hoverLocation);
-        Color fill=hot?(dictatePressed?Color.FromArgb(179,30,43):Theme.Accent):Color.White;
-        Color foreground=hot?Color.White:Color.Black;
-        if(hot)using(GraphicsPath shadow=Theme.Round(new Rectangle(area.Left,area.Top+1,area.Width,area.Height),8))using(Brush shade=new SolidBrush(Color.FromArgb(245,219,223)))g.FillPath(shade,shadow);
-        using(GraphicsPath shape=Theme.Round(area,8))using(Brush background=new SolidBrush(fill))g.FillPath(background,shape);
+        Color fill=hot?(dictatePressed?Color.FromArgb(251,230,233):Color.FromArgb(255,244,245)):Color.White;
+        Color foreground=Color.Black;
+        using(GraphicsPath shape=Theme.Round(area,8)){using(Brush background=new SolidBrush(fill))g.FillPath(background,shape);if(hot)using(Pen edge=new Pen(Color.FromArgb(247,227,230)))g.DrawPath(edge,shape);}
         int x=area.Left+12,y=area.Top+7;
         using(Pen mic=new Pen(foreground,1.5f)){mic.StartCap=mic.EndCap=LineCap.Round;using(GraphicsPath capsule=Theme.Round(new Rectangle(x+2,y,5,10),2))g.DrawPath(mic,capsule);g.DrawArc(mic,x-1,y+3,11,11,0,180);g.DrawLine(mic,x+4.5f,y+14,x+4.5f,y+17);g.DrawLine(mic,x+1,y+17,x+8,y+17);}
         using(Font label=new Font("Segoe UI Semibold",9.25f,FontStyle.Regular))TextRenderer.DrawText(g,"Dictate",label,new Rectangle(area.Left+29,area.Top,area.Width-33,area.Height),foreground,TextFormatFlags.VerticalCenter|TextFormatFlags.SingleLine|TextFormatFlags.NoPadding);

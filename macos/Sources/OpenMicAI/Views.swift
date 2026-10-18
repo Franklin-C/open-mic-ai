@@ -247,8 +247,8 @@ struct ActivityView: View {
             HStack(spacing: 8) {
                 Button { state.shortcut() } label: { Label("Dictate", systemImage: "mic.fill") }.buttonStyle(FloatingDictateStyle()).help("Dictate")
                 Spacer(minLength: 0)
-                Button { state.copy(state.recentText) } label: { Image(systemName: "doc.on.doc").font(.system(size: 15)).frame(width: 22, height: 28) }.disabled(state.recentText.isEmpty).help("Copy recent transcription").accessibilityLabel("Copy recent transcription")
-                Button { state.showMain() } label: { FloatingAppLogo() }.help("Open app").accessibilityLabel("Open app")
+                Button { state.copy(state.recentText) } label: { Image(systemName: "doc.on.doc").frame(width: 22, height: 28) }.buttonStyle(FloatingDictateStyle(compact: true)).disabled(state.recentText.isEmpty).help("Copy recent transcription").accessibilityLabel("Copy recent transcription")
+                Button { state.showMain() } label: { FloatingAppLogo() }.buttonStyle(FloatingDictateStyle(compact: true)).help("Open app").accessibilityLabel("Open app")
                 Button { state.hideFloatingBar() } label: { Image(systemName: "xmark") }.help("Hide bar").accessibilityLabel("Hide bar")
             }.buttonStyle(.plain).padding(10).frame(width: 204, height: 46).background(.white).tint(.red).preferredColorScheme(.light)
         } else {
@@ -257,7 +257,7 @@ struct ActivityView: View {
                 Image(systemName: "mic.fill").foregroundStyle(.red)
                 if state.phase == "ai" || state.phase == "transcribing" { ProgressView().controlSize(.small); Text(state.phase == "ai" ? "Adjusting with AI…" : "Transcribing…") }
                 else { Text(state.phase == "recording" ? "Listening…" : "Open Mic AI").font(.headline) }
-                Spacer(); Button { state.showMain() } label: { FloatingAppLogo() }.help("Open app").accessibilityLabel("Open app")
+                Spacer(); Button { state.showMain() } label: { FloatingAppLogo() }.buttonStyle(FloatingDictateStyle(compact: true)).help("Open app").accessibilityLabel("Open app")
                 Button { state.cancel() } label: { Image(systemName: "xmark") }
             }
             if state.phase == "actions" {
@@ -283,19 +283,23 @@ struct ActivityView: View {
     }
 }
 private struct FloatingDictateStyle: ButtonStyle {
+    var compact = false
     func makeBody(configuration: Configuration) -> some View {
-        FloatingDictateBody(configuration: configuration)
+        FloatingDictateBody(configuration: configuration, compact: compact)
     }
 }
 private struct FloatingDictateBody: View {
     let configuration: ButtonStyleConfiguration
+    let compact: Bool
+    @Environment(\.isEnabled) private var enabled
     @State private var hovering = false
-    private var active: Bool { hovering || configuration.isPressed }
+    private var active: Bool { enabled && (hovering || configuration.isPressed) }
     var body: some View {
-        configuration.label.font(.system(size: 12, weight: .semibold)).foregroundStyle(active ? Color.white : Color.black)
-            .padding(.horizontal, 10).frame(height: 30)
-            .background(active ? Color(red: configuration.isPressed ? 0.70 : 0.88, green: 0.15, blue: 0.21) : Color.white, in: RoundedRectangle(cornerRadius: 8))
-            .shadow(color: .red.opacity(active ? 0.12 : 0), radius: 1, x: 0, y: 1)
+        configuration.label.font(.system(size: compact ? 15 : 12, weight: .semibold)).foregroundStyle(Color.black)
+            .opacity(enabled ? 1 : 0.45)
+            .padding(.horizontal, compact ? 0 : 10).frame(width: compact ? 28 : nil, height: 30)
+            .background(active ? (configuration.isPressed ? Color(red: 251/255, green: 230/255, blue: 233/255) : Color(red: 1, green: 244/255, blue: 245/255)) : Color.white, in: RoundedRectangle(cornerRadius: compact ? 6 : 8))
+            .overlay(RoundedRectangle(cornerRadius: compact ? 6 : 8).stroke(active ? Color(red: 247/255, green: 227/255, blue: 230/255) : .clear, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 8))
             .onHover { hovering = $0 }
             .animation(.easeOut(duration: 0.1), value: hovering)
