@@ -1,5 +1,5 @@
 {
-  "version": "3.7.2",
+  "version": "3.7.3",
   "windows": {
     "complete": true,
     "scope": "Synthetic transcribed text with resident Qwen3-4B-Instruct-2507-Q3_K_S, isolated native UI/paste fixtures and offline guards. All 19 automatic layouts: three dictated examples each, 19 selected rewrites, eight ordinary messages, and vocabulary/snippets in all four styles. Additional checks exercise the spoken rewrite entry point and repaired table/outline renderers. Counts overlap; these are not speech-accuracy measurements or results for every model. No user history is published.",
@@ -21,7 +21,7 @@
     },
     "formatting_model_capture_version": "3.7.0",
     "native_ui_capture_version": "3.7.1",
-    "floating_visual_checks": "3.7.2: isolated render and click checks at 204x38 for standard copy icon, app logo and red Dictate button. Hover, pressed and result-copy states visually inspected; Dictate, copy and Open app actions remain independent, including hold-to-talk.",
+    "floating_visual_checks": "3.7.3: isolated render and click checks at 204x38 for standard copy icon, app logo and white Dictate button with black text, turning red with white text on hover. Hover, pressed and result-copy states visually inspected; Dictate, copy and Open app actions remain independent, including hold-to-talk.",
     "focus_and_bar_checks": "3.7.1: native editor HWND stability, stable editor identity and bounds, changed-field rejection, automatic card dismissal, independent copy-recent and Open app icons, hold-to-talk separation and 204x38 compact bar. Editor identity refresh is simulated in native fixtures; browser-specific real-device behavior is not exhaustively tested."
   },
   "macos": {

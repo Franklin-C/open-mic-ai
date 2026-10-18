@@ -101,12 +101,13 @@ public sealed class Pill : Form {
     }
     void PaintDictate(Graphics g){
         Rectangle area=DictateBounds;bool hot=area.Contains(hoverLocation);
-        Color fill=dictatePressed&&hot?Color.FromArgb(179,30,43):hot?Color.FromArgb(206,35,49):Theme.Accent;
-        using(GraphicsPath shadow=Theme.Round(new Rectangle(area.Left,area.Top+1,area.Width,area.Height),8))using(Brush shade=new SolidBrush(Color.FromArgb(245,219,223)))g.FillPath(shade,shadow);
+        Color fill=hot?(dictatePressed?Color.FromArgb(179,30,43):Theme.Accent):Color.White;
+        Color foreground=hot?Color.White:Color.Black;
+        if(hot)using(GraphicsPath shadow=Theme.Round(new Rectangle(area.Left,area.Top+1,area.Width,area.Height),8))using(Brush shade=new SolidBrush(Color.FromArgb(245,219,223)))g.FillPath(shade,shadow);
         using(GraphicsPath shape=Theme.Round(area,8))using(Brush background=new SolidBrush(fill))g.FillPath(background,shape);
         int x=area.Left+12,y=area.Top+7;
-        using(Pen mic=new Pen(Color.White,1.5f)){mic.StartCap=mic.EndCap=LineCap.Round;using(GraphicsPath capsule=Theme.Round(new Rectangle(x+2,y,5,10),2))g.DrawPath(mic,capsule);g.DrawArc(mic,x-1,y+3,11,11,0,180);g.DrawLine(mic,x+4.5f,y+14,x+4.5f,y+17);g.DrawLine(mic,x+1,y+17,x+8,y+17);}
-        using(Font label=new Font("Segoe UI Semibold",9.25f,FontStyle.Regular))TextRenderer.DrawText(g,"Dictate",label,new Rectangle(area.Left+29,area.Top,area.Width-33,area.Height),Color.White,TextFormatFlags.VerticalCenter|TextFormatFlags.SingleLine|TextFormatFlags.NoPadding);
+        using(Pen mic=new Pen(foreground,1.5f)){mic.StartCap=mic.EndCap=LineCap.Round;using(GraphicsPath capsule=Theme.Round(new Rectangle(x+2,y,5,10),2))g.DrawPath(mic,capsule);g.DrawArc(mic,x-1,y+3,11,11,0,180);g.DrawLine(mic,x+4.5f,y+14,x+4.5f,y+17);g.DrawLine(mic,x+1,y+17,x+8,y+17);}
+        using(Font label=new Font("Segoe UI Semibold",9.25f,FontStyle.Regular))TextRenderer.DrawText(g,"Dictate",label,new Rectangle(area.Left+29,area.Top,area.Width-33,area.Height),foreground,TextFormatFlags.VerticalCenter|TextFormatFlags.SingleLine|TextFormatFlags.NoPadding);
     }
     void CopyRecent(){if(String.IsNullOrWhiteSpace(RecentText)||CopyResult==null)return;if(CopyResult(RecentText)){recentCopiedUntil=DateTime.UtcNow.AddSeconds(1.5);dismiss.Interval=1600;dismiss.Start();Invalidate();}}
     void UpdateHover(Point point){hoverLocation=point;if(!Idle)return;string text=RecentCopyBounds.Contains(point)?String.IsNullOrWhiteSpace(RecentText)?"No recent transcription":"Copy recent transcription":OpenAppBounds.Contains(point)?"Open app":DictateBounds.Contains(point)?"Dictate":CloseBounds.Contains(point)?"Hide bar":"Drag to move";if(hints.GetToolTip(this)!=text)hints.SetToolTip(this,text);Invalidate();}

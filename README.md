@@ -78,8 +78,8 @@ with usage tips and the scope of the tests.
 
 Drag it where you want it. See provisional words while speaking, an animated
 indicator while AI finishes, and a result card when you translate or summarize.
-Dictation pastes automatically and returns to the compact bar. The red Dictate
-button starts recording; the copy icon copies your latest text, and the microphone
+Dictation pastes automatically and returns to the compact bar. The Dictate button
+turns red on hover; the copy icon copies your latest text, and the microphone
 logo opens the app. A Copy card stays available if the
 destination changes or automatic paste cannot finish.
 With text highlighted, the same shortcut starts recording immediately. Say

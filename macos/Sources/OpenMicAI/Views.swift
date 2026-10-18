@@ -284,10 +284,21 @@ struct ActivityView: View {
 }
 private struct FloatingDictateStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
+        FloatingDictateBody(configuration: configuration)
+    }
+}
+private struct FloatingDictateBody: View {
+    let configuration: ButtonStyleConfiguration
+    @State private var hovering = false
+    private var active: Bool { hovering || configuration.isPressed }
+    var body: some View {
+        configuration.label.font(.system(size: 12, weight: .semibold)).foregroundStyle(active ? Color.white : Color.black)
             .padding(.horizontal, 10).frame(height: 30)
-            .background(Color(red: configuration.isPressed ? 0.70 : 0.88, green: 0.15, blue: 0.21), in: RoundedRectangle(cornerRadius: 8))
-            .shadow(color: .red.opacity(0.12), radius: 1, x: 0, y: 1)
+            .background(active ? Color(red: configuration.isPressed ? 0.70 : 0.88, green: 0.15, blue: 0.21) : Color.white, in: RoundedRectangle(cornerRadius: 8))
+            .shadow(color: .red.opacity(active ? 0.12 : 0), radius: 1, x: 0, y: 1)
+            .contentShape(RoundedRectangle(cornerRadius: 8))
+            .onHover { hovering = $0 }
+            .animation(.easeOut(duration: 0.1), value: hovering)
             .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
