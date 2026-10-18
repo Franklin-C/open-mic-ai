@@ -245,10 +245,10 @@ struct ActivityView: View {
     var body: some View {
         if state.phase == "idle" {
             HStack(spacing: 8) {
-                Button { state.shortcut() } label: { Label("Dictate", systemImage: "mic.fill").foregroundStyle(.red) }.help("Dictate")
+                Button { state.shortcut() } label: { Label("Dictate", systemImage: "mic.fill") }.buttonStyle(FloatingDictateStyle()).help("Dictate")
                 Spacer(minLength: 0)
-                Button { state.copy(state.recentText) } label: { Image(systemName: "doc.on.doc") }.disabled(state.recentText.isEmpty).help("Copy recent transcription").accessibilityLabel("Copy recent transcription")
-                Button { state.showMain() } label: { Image(systemName: "square.grid.2x2") }.help("Open app").accessibilityLabel("Open app")
+                Button { state.copy(state.recentText) } label: { Image(systemName: "doc.on.doc").font(.system(size: 15)).frame(width: 22, height: 28) }.disabled(state.recentText.isEmpty).help("Copy recent transcription").accessibilityLabel("Copy recent transcription")
+                Button { state.showMain() } label: { FloatingAppLogo() }.help("Open app").accessibilityLabel("Open app")
                 Button { state.hideFloatingBar() } label: { Image(systemName: "xmark") }.help("Hide bar").accessibilityLabel("Hide bar")
             }.buttonStyle(.plain).padding(10).frame(width: 204, height: 46).background(.white).tint(.red).preferredColorScheme(.light)
         } else {
@@ -257,7 +257,7 @@ struct ActivityView: View {
                 Image(systemName: "mic.fill").foregroundStyle(.red)
                 if state.phase == "ai" || state.phase == "transcribing" { ProgressView().controlSize(.small); Text(state.phase == "ai" ? "Adjusting with AI…" : "Transcribing…") }
                 else { Text(state.phase == "recording" ? "Listening…" : "Open Mic AI").font(.headline) }
-                Spacer(); Button { state.showMain() } label: { Image(systemName: "square.grid.2x2") }.help("Open app").accessibilityLabel("Open app")
+                Spacer(); Button { state.showMain() } label: { FloatingAppLogo() }.help("Open app").accessibilityLabel("Open app")
                 Button { state.cancel() } label: { Image(systemName: "xmark") }
             }
             if state.phase == "actions" {
@@ -267,7 +267,7 @@ struct ActivityView: View {
             } else if state.phase == "result" {
                 Text(state.preview).font(.caption).foregroundStyle(.secondary)
                 ScrollView { Text(state.result).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(maxHeight: 150)
-                HStack { Button("Copy") { state.copy(state.result) }.disabled(state.result.isEmpty); Spacer(); Button("Dictate") { state.shortcut() } }
+                HStack { Button { state.copy(state.result) } label: { Label("Copy", systemImage: "doc.on.doc") }.disabled(state.result.isEmpty); Spacer(); Button("Dictate") { state.shortcut() }.buttonStyle(FloatingDictateStyle()) }
             } else {
                 if state.phase == "recording" && !state.selection.isEmpty {
                     Text(state.selection).lineLimit(2).font(.caption).foregroundStyle(.secondary)
@@ -280,5 +280,23 @@ struct ActivityView: View {
             if !state.message.isEmpty { Text(state.message).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
         }.padding(18).frame(width: 440).background(.white).tint(.red).preferredColorScheme(.light)
         }
+    }
+}
+private struct FloatingDictateStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
+            .padding(.horizontal, 10).frame(height: 30)
+            .background(Color(red: configuration.isPressed ? 0.70 : 0.88, green: 0.15, blue: 0.21), in: RoundedRectangle(cornerRadius: 8))
+            .shadow(color: .red.opacity(0.12), radius: 1, x: 0, y: 1)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+private struct FloatingAppLogo: View {
+    var body: some View {
+        Group {
+            if let url = Bundle.module.url(forResource: "logo", withExtension: "png"), let image = NSImage(contentsOf: url) {
+                Image(nsImage: image).resizable().scaledToFit()
+            } else { Image(systemName: "mic.fill").foregroundStyle(.red) }
+        }.frame(width: 22, height: 22).padding(3)
     }
 }

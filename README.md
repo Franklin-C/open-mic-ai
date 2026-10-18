@@ -78,8 +78,9 @@ with usage tips and the scope of the tests.
 
 Drag it where you want it. See provisional words while speaking, an animated
 indicator while AI finishes, and a result card when you translate or summarize.
-Dictation pastes automatically and returns to the compact bar. Its small icons
-open the app or copy your most recent text. A Copy card stays available if the
+Dictation pastes automatically and returns to the compact bar. The red Dictate
+button starts recording; the copy icon copies your latest text, and the microphone
+logo opens the app. A Copy card stays available if the
 destination changes or automatic paste cannot finish.
 With text highlighted, the same shortcut starts recording immediately. Say
 “rewrite this more clearly”, “translate into French”, or “summarize this”, or
