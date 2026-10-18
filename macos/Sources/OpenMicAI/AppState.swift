@@ -16,6 +16,7 @@ import OpenMicCore
     @Published var status = "Download models in Settings"
     @Published var preview = ""
     @Published var result = ""
+    @Published var recentText = ""
     @Published var selection = ""
     @Published var modelBusy = false
     @Published var capturingShortcut = false
@@ -54,6 +55,7 @@ import OpenMicCore
         preferences = savedPreferences; history = read("history.json", []); snippets = read("snippets.json", []); vocabulary = read("vocabulary.json", [])
         aiTokens = read("ai-tokens.json", AiTokenTotals())
         models = try LocalModels(root: root)
+        if let recent = history.first { recentText = recent.result.isEmpty ? recent.source : recent.result }
         models.status = { [weak self] in self?.status = $0 }
         models.tokensUsed = { [weak self] usage in
             guard let self else { return }
@@ -166,14 +168,20 @@ import OpenMicCore
     }
     func deliver(source: String, output: String, action: String, target: FocusTarget?, current: UUID, seconds: Double = 0) async {
         guard !Task.isCancelled, epoch == current else { return }
-        result = output; addHistory(source: source, result: output, action: action, seconds: seconds)
+        result = output; recentText = output; addHistory(source: source, result: output, action: action, seconds: seconds)
         var pasted = false
         if action == "Dictate" || action == "Rewrite", let target { pasted = await target.paste(output, replacing: action == "Rewrite" || !selection.isEmpty) }
         guard epoch == current else { return }
-        preview = action == "Translate" || action == "Summarize" ? action : pasted ? "Pasted" : "Ready to copy"
+        if pasted {
+            phase = "idle"; preview = ""; selection = ""
+            if preferences.showBar { showBar() } else { hideBar() }
+            return
+        }
+        preview = action == "Translate" || action == "Summarize" ? action : "Ready to copy"
         phase = "result"; showBar()
     }
-    func cancel() { epoch = UUID(); work?.cancel(); previewTask?.cancel(); timer?.invalidate(); timer = nil; audio.stop(); phase = "idle"; preview = ""; result = ""; selection = ""; if !preferences.showBar { hideBar() } }
+    func cancel() { epoch = UUID(); work?.cancel(); previewTask?.cancel(); timer?.invalidate(); timer = nil; audio.stop(); phase = "idle"; preview = ""; result = ""; selection = ""; if preferences.showBar { showBar() } else { hideBar() } }
+    func hideFloatingBar() { preferences.showBar = false; cancel(); save() }
     func permissions() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
@@ -205,7 +213,7 @@ import OpenMicCore
         importTask = Task {
             var complete = false
             defer {
-                if !importSource.isEmpty { addHistory(source: importSource, result: importResult, action: "Imported file\(complete ? "" : " (partial)") · \(importName)") }
+                if !importSource.isEmpty { recentText = importResult.isEmpty ? importSource : importResult; addHistory(source: importSource, result: importResult, action: "Imported file\(complete ? "" : " (partial)") · \(importName)") }
                 importBusy = false; importTask = nil
             }
             do {

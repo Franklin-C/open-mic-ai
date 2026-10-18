@@ -26,6 +26,12 @@ In **Settings → Shortcuts**, click the shortcut button and press your preferre
 keys or a side mouse button. Choose click-to-toggle, hold-to-talk, or automatic
 stopping after a pause. **Escape** cancels.
 
+Dictation pastes at the cursor automatically. After a successful paste, the bar
+shrinks back to Dictate plus small **Copy recent transcription** and **Open app**
+icons. Hover over either icon for its label. Copy recent also works with history
+saving disabled. A result card appears when automatic paste could not finish,
+or when an action such as translation or summary needs its own result.
+
 ## Style and history
 
 Choose **Raw transcript**, **Clean up**, **Polish**, or **Custom** under

@@ -92,11 +92,11 @@ public sealed class FlowContext : ApplicationContext {
     bool exiting,booting;
     public FlowContext(string directory,bool openWindow=false,EventWaitHandle reopen=null) {
         root=directory;settings=Settings.Load(root);history=new HistoryStore(root);personalization=new PersonalizationStore(root);usage=new UsageStore(root);
-        ui=SynchronizationContext.Current??new WindowsFormsSynchronizationContext();
+        ui=SynchronizationContext.Current??new WindowsFormsSynchronizationContext();HistoryEntry recent=history.Snapshot().FirstOrDefault();if(recent!=null)pill.RememberResult(!String.IsNullOrEmpty(recent.Result)?recent.Result:recent.VoiceEdit?recent.SelectedText:recent.Transcript);
         importer.CanStart=()=>!exiting&&!Busy&&!booting&&models!=null&&models.Alive;
         importer.Preferences=()=>new JavaScriptSerializer().Deserialize<Settings>(new JavaScriptSerializer().Serialize(settings));importer.Rules=()=>personalization.Snapshot();
         importer.Transcribe=(pcm,vocabulary,token)=>models.Transcribe(pcm,vocabulary,token);importer.Rewrite=(text,prefs,vocabulary,token)=>models.Rewrite(text,prefs.Style,prefs.Custom,token,vocabulary,prefs.Cleanup,prefs.PolishReworded);
-        importer.Save=(source,result,mode)=>{if(exiting)return;history.Add(source,result,mode);lastRaw=source;lastResult=result;copyResult.Enabled=copyRaw.Enabled=true;};
+        importer.Save=(source,result,mode)=>{if(exiting)return;history.Add(source,result,mode);lastRaw=source;lastResult=result;pill.RememberResult(String.IsNullOrEmpty(result)?source:result);copyResult.Enabled=copyRaw.Enabled=true;};
         holdMouse=new HoldMouseInput(ui);holdMouse.CanStart=()=>!exiting&&!importer.Busy&&!ShortcutWindow.Capturing&&actionSession==null&&(session==null||!session.Stopped)&&models!=null&&models.Alive;
         holdMouse.Down=()=>{if(Hotkey.Mouse(settings.Shortcut)){Toggle();if(settings.RecordingMode=="Hold to talk")heldSession=session;}else if(session==null&&CanDictate()){Begin(false);heldSession=session;}};holdMouse.Up=()=>{if(selectionProbe!=null)pendingHoldReleased=true;DictationSession current=heldSession;heldSession=null;if(current!=null&&session==current&&!current.Stopped)Finish(current);};
         shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;
@@ -186,7 +186,7 @@ public sealed class FlowContext : ApplicationContext {
         FocusTarget target=FocusTarget.Capture();if(target.IsPassword){Notify("Choose text outside a password box.");return;}
         CancellationTokenSource probe=new CancellationTokenSource();selectionProbe=probe;
         try {string source=await target.CaptureSelectionAsync(probe.Token);probe.Token.ThrowIfCancellationRequested();
-            if(!target.MatchesCurrent()){Notify("The focused text box changed. Try again.");return;}
+            if(!await target.MatchesCurrentAsync(probe.Token)){Notify("The focused text box changed. Try again.");return;}
             if(String.IsNullOrWhiteSpace(source)){Notify("Select text first, then press your shortcut.");return;}
             if(source.Length>9000){Notify("Select up to 9,000 characters at a time.");return;}
             ShowSelectedActions(target,source);
@@ -212,7 +212,7 @@ public sealed class FlowContext : ApplicationContext {
         }catch(OperationCanceledException){if(!current.Cancel.IsCancellationRequested&&!exiting)errorText="Local AI timed out.";}
         catch(Exception error){errorText=error.Message;}
         finally {
-            if(actionSession==current){actionSession=null;shortcut.ListenForEscape(false);if(!exiting){SetStatus("Ready · "+settings.Shortcut+" · "+watch.Elapsed.TotalSeconds.ToString("0.00")+"s");if(!current.Cancel.IsCancellationRequested&&output!=null)pill.ShowResult(output,false,!pasted,current.Target.Window,action!="Rewrite"||!pasted,action=="Translate"?"Translation · "+current.Language:action=="Summarize"?"Summary":null);else if(!current.Cancel.IsCancellationRequested&&errorText!=null){pill.ShowResult(current.Source,true,true,current.Target.Window);pill.Caption="Original unchanged";pill.UpdateTranscript(errorText);Notify(errorText,false);}else pill.Conceal();}}
+            if(actionSession==current){actionSession=null;shortcut.ListenForEscape(false);if(!exiting){SetStatus("Ready · "+settings.Shortcut+" · "+watch.Elapsed.TotalSeconds.ToString("0.00")+"s");if(!current.Cancel.IsCancellationRequested&&output!=null){if(pasted)pill.CompletePaste(output);else pill.ShowResult(output,false,true,current.Target.Window,true,action=="Translate"?"Translation · "+current.Language:action=="Summarize"?"Summary":null);}else if(!current.Cancel.IsCancellationRequested&&errorText!=null){pill.ShowResult(current.Source,true,true,current.Target.Window);pill.Caption="Original unchanged";pill.UpdateTranscript(errorText);Notify(errorText,false);}else pill.Conceal();}}
             current.Dispose();
         }
     }
@@ -232,7 +232,7 @@ public sealed class FlowContext : ApplicationContext {
             if(current.Target.IsPassword){Notify("Choose a text field outside a password box.");return;}
             string selection=capturedSelection??await current.Target.CaptureSelectionAsync(probe.Token);
             probe.Token.ThrowIfCancellationRequested();if(exiting)return;
-            if(!target.MatchesCurrent()){Notify("The focused text box changed. Try again.");return;}
+            if(!await target.MatchesCurrentAsync(probe.Token)){Notify("The focused text box changed. Try again.");return;}
             if(!String.IsNullOrWhiteSpace(selection)){if(selection.Length>9000){Notify("Select up to 9,000 characters.");return;}current.SelectedText=selection;}else if(edit){Notify("Select some text, then speak an instruction.");return;}
             current.Segments.Submit=pcm=>current.AddPending(Recognize(current,pcm));
             current.Mic=new Microphone(settings.Microphone);current.Mic.Audio=current.Segments.Push;
@@ -266,7 +266,7 @@ public sealed class FlowContext : ApplicationContext {
             SaveToHistory(current,text,output);saved=true;if(cardOutput)return;
             // Let the user release the shortcut before sending Ctrl+V.
             for(int i=0;i<100&&Native.ModifiersDown();i++)await Task.Delay(20,current.Cancel.Token);
-            if(Native.ModifiersDown()||!current.Target.MatchesCurrent()||(current.SelectedText!=null&&!current.Target.SelectionWritable)) {return;}
+            if(Native.ModifiersDown()||!await current.Target.MatchesCurrentAsync(current.Cancel.Token)||(current.SelectedText!=null&&!current.Target.SelectionWritable)) {return;}
             pasted=await Paste(output,current.Target,current.Cancel.Token,current.SelectedText!=null);
             if(!pasted){Notify("The field or selection changed. Click Copy on the indicator, then press Ctrl+V in your text box.");return;}
             SetStatus("Ready · "+settings.Shortcut+" · "+watch.Elapsed.TotalSeconds.ToString("0.00")+"s");
@@ -275,13 +275,13 @@ public sealed class FlowContext : ApplicationContext {
         finally {
             if(!saved&&!current.Cancel.IsCancellationRequested&&!exiting)SaveToHistory(current,recognized,"");
             if(session==current){session=null;shortcut.ListenForEscape(false);if(!exiting)SetStatus("Ready · "+settings.Shortcut);
-                if(!exiting&&!current.Cancel.IsCancellationRequested&&!String.IsNullOrWhiteSpace(readyText??recognized))pill.ShowResult(readyText??recognized,readyText==null,!pasted,current.Target.Window,cardOutput,current.ActionName=="Translate"?"Translation · "+current.ActionLanguage:current.ActionName=="Summarize"?"Summary":null);else if(noSpeech&&!exiting&&!current.Cancel.IsCancellationRequested)pill.ShowNotice("No speech detected","Try another microphone in Settings.");else pill.Conceal();
+                if(!exiting&&!current.Cancel.IsCancellationRequested&&!String.IsNullOrWhiteSpace(readyText??recognized)){if(pasted)pill.CompletePaste(readyText??recognized);else pill.ShowResult(readyText??recognized,readyText==null,true,current.Target.Window,cardOutput,current.ActionName=="Translate"?"Translation · "+current.ActionLanguage:current.ActionName=="Summarize"?"Summary":null);}else if(noSpeech&&!exiting&&!current.Cancel.IsCancellationRequested)pill.ShowNotice("No speech detected","Try another microphone in Settings.");else pill.Conceal();
             }
         }
     }
     public static async Task<bool> Paste(string output,FocusTarget target,CancellationToken cancel,bool requireSelection=false) {
         // Re-copy a canvas selection BEFORE replacing the clipboard with the result.
-        if(!target.MatchesCurrent()||(requireSelection?!await target.SelectionMatchesAsync(cancel):!await target.DictationTargetMatchesAsync(cancel)))return false;
+        if(!await target.MatchesCurrentAsync(cancel)||(requireSelection?!await target.SelectionMatchesAsync(cancel):!await target.DictationTargetMatchesAsync(cancel)))return false;
         IDataObject previous=null;int sequence=0;
         try {
             IDataObject data=Clipboard.GetDataObject();
@@ -289,7 +289,7 @@ public sealed class FlowContext : ApplicationContext {
             TextClipboard.SetText(output);
             sequence=ClipboardSequence();
             cancel.ThrowIfCancellationRequested();
-            if(!target.MatchesCurrent()||(requireSelection&&target.CanCheckSelectionDirectly&&!target.SelectionMatches()))return false;
+            if(!await target.MatchesCurrentAsync(cancel)||(requireSelection&&target.CanCheckSelectionDirectly&&!target.SelectionMatches()))return false;
             if(!Native.Paste())throw new InvalidOperationException("Windows blocked pasting into this app. The result is available in the tray.");
             await Task.Delay(350,cancel);
             return true;

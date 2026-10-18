@@ -71,3 +71,7 @@ Home shows cumulative AI input, output and total tokens reported by the local
 model. Counts start with this update and are saved on your Mac. See the
 [formatting examples](formatting-examples.md) for Windows model results; these
 are not measurements of the Mac speech engine.
+
+After dictation pastes successfully, the floating panel returns to its compact
+bar. The small icons copy recent text or open the app. Translation, summary and
+failed-paste results keep their full result card.

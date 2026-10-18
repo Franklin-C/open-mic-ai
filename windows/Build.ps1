@@ -13,6 +13,7 @@ if ($EmbeddedRuntime) { $arguments += '/resource:' + $EmbeddedRuntime + ',LocalF
 foreach ($reference in $references) { $arguments += '/reference:' + (Join-Path $framework $reference) }
 $arguments += '/reference:' + (Join-Path $framework 'WPF\UIAutomationClient.dll')
 $arguments += '/reference:' + (Join-Path $framework 'WPF\UIAutomationTypes.dll')
+$arguments += '/reference:' + (Join-Path $framework 'WPF\WindowsBase.dll')
 & $compiler @arguments @sources
 if ($LASTEXITCODE -ne 0) { throw 'Compilation failed.' }
 Get-Item -LiteralPath $Output | Select-Object Name, Length

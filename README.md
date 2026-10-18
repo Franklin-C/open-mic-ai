@@ -78,6 +78,9 @@ with usage tips and the scope of the tests.
 
 Drag it where you want it. See provisional words while speaking, an animated
 indicator while AI finishes, and a result card when you translate or summarize.
+Dictation pastes automatically and returns to the compact bar. Its small icons
+open the app or copy your most recent text. A Copy card stays available if the
+destination changes or automatic paste cannot finish.
 With text highlighted, the same shortcut starts recording immediately. Say
 “rewrite this more clearly”, “translate into French”, or “summarize this”, or
 dictate replacement text. The three action buttons remain on the recording card.
@@ -85,7 +88,7 @@ dictate replacement text. The three action buttons remain on the recording card.
 <table>
 <tr><th>Ready</th><th>Speaking</th><th>AI formatting</th></tr>
 <tr>
-<td><img src="docs/images/flow-bar-preview.png" alt="Small floating bar with Dictate and Open app buttons"></td>
+<td><img src="docs/images/flow-bar-preview.png" alt="Compact floating bar with Dictate, Copy recent and Open app icons"></td>
 <td><img src="docs/images/recording-pill.png" alt="Recording bar displaying Please send the report to Sarah tomorrow"></td>
 <td><img src="docs/images/polishing-pill.png" alt="Polishing bar with a processing indicator and the recognized text"></td>
 </tr>

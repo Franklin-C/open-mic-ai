@@ -78,11 +78,14 @@ public static class Native {
         GUIInfo info = new GUIInfo { Size=(uint)Marshal.SizeOf(typeof(GUIInfo)) };
         return GetGUIThreadInfo(thread, ref info) ? info.Focus : IntPtr.Zero;
     }
-    public static bool EditSelection(IntPtr window,out string text,out int start,out int end) {
-        text=null;start=end=-1;IntPtr result;
+    public static bool IsTextEdit(IntPtr window){
         StringBuilder name=new StringBuilder(128);GetClassName(window,name,name.Capacity);
         string className=name.ToString().ToUpperInvariant();
-        if(className!="EDIT"&&!className.StartsWith("RICHEDIT")&&!className.StartsWith("WINDOWSFORMS10.EDIT")&&!className.StartsWith("WINDOWSFORMS10.RICHEDIT"))return false;
+        return className=="EDIT"||className.StartsWith("RICHEDIT")||className.StartsWith("WINDOWSFORMS10.EDIT")||className.StartsWith("WINDOWSFORMS10.RICHEDIT");
+    }
+    public static bool EditSelection(IntPtr window,out string text,out int start,out int end) {
+        text=null;start=end=-1;IntPtr result;
+        if(!IsTextEdit(window))return false;
         if(SendMessageTimeout(window,0x000E,IntPtr.Zero,IntPtr.Zero,2,250,out result)==IntPtr.Zero)return false;
         int length=(int)result.ToInt64();if(length<0||length>100000)return false;
         IntPtr buffer=Marshal.AllocHGlobal(Math.Max(8,(length+1)*2));
@@ -100,6 +103,8 @@ public static class Native {
 public sealed class FocusTarget {
     public IntPtr Window, Control;
     public int[] RuntimeId;
+    FocusIdentity identity;
+    bool nativeEditor;
     public bool IsPassword;
     public bool SelectionWritable;
     int selectionStart=-1,selectionEnd=-1;
@@ -112,11 +117,14 @@ public sealed class FocusTarget {
         FocusTarget target = new FocusTarget();
         target.Window = Native.GetForegroundWindow();
         target.Control = Native.FocusedHandle(target.Window);
+        target.nativeEditor=Native.IsTextEdit(target.Control);
+        if(target.nativeEditor)target.IsPassword=(Native.WindowStyle(target.Control,-16)&0x20)!=0;
         try {
-            AutomationElement element = AutomationElement.FocusedElement;
+            AutomationElement element = target.nativeEditor?AutomationElement.FromHandle(target.Control):AutomationElement.FocusedElement;
             if (element != null) {
-                target.IsPassword = element.Current.IsPassword;
+                target.IsPassword = target.IsPassword||element.Current.IsPassword;
                 target.RuntimeId = element.GetRuntimeId();
+                target.identity = FocusIdentity.Capture(element);
             }
         } catch (ElementNotAvailableException) { } catch (InvalidOperationException) { }
           catch (COMException) { }
@@ -125,13 +133,25 @@ public sealed class FocusTarget {
     public bool MatchesCurrent() {
         if (Window == IntPtr.Zero || !Native.IsWindow(Window) || Native.GetForegroundWindow() != Window) return false;
         if (Control != IntPtr.Zero && Native.FocusedHandle(Window) != Control) return false;
+        // Native edit HWNDs identify the exact field even if UIA focus lags.
+        if(nativeEditor)return Native.IsTextEdit(Control)&&(Native.WindowStyle(Control,-16)&0x20)==0;
         if (RuntimeId != null) {
             try {
                 AutomationElement element = AutomationElement.FocusedElement;
-                return element != null && !element.Current.IsPassword && RuntimeId.SequenceEqual(element.GetRuntimeId());
+                return element != null && !element.Current.IsPassword && (RuntimeId.SequenceEqual(element.GetRuntimeId()) || identity!=null&&identity.SameEditor(FocusIdentity.Capture(element)));
             } catch (Exception) { return false; }
         }
         return true;
+    }
+    public async Task<bool> MatchesCurrentAsync(CancellationToken cancel){
+        for(int attempt=0;attempt<4;attempt++){
+            cancel.ThrowIfCancellationRequested();if(MatchesCurrent())return true;
+            if(Window==IntPtr.Zero||!Native.IsWindow(Window))return false;
+            IntPtr foreground=Native.GetForegroundWindow(),focused=foreground==Window?Native.FocusedHandle(Window):IntPtr.Zero;
+            if(foreground!=IntPtr.Zero&&foreground!=Window||Control!=IntPtr.Zero&&focused!=IntPtr.Zero&&focused!=Control)return false;
+            if(attempt<3)await Task.Delay(40,cancel);
+        }
+        return false;
     }
     public string CaptureSelection() {
         if(IsPassword||!MatchesCurrent())return null;
@@ -160,6 +180,7 @@ public sealed class FocusTarget {
     // Canvas editors (including Google Docs) often expose an empty accessibility
     // selection. Ask the focused app to copy it; never move the caret or clear it.
     public async Task<string> CaptureSelectionAsync(CancellationToken cancel) {
+        if(!await MatchesCurrentAsync(cancel))throw new InvalidOperationException("The focused text box changed. Try again.");
         string text=CaptureSelection();
         if(text!=null)return text;
         text=await CopySelection(cancel);
@@ -167,24 +188,25 @@ public sealed class FocusTarget {
         return text;
     }
     public async Task<bool> SelectionMatchesAsync(CancellationToken cancel) {
+        if(!await MatchesCurrentAsync(cancel))return false;
         if(!clipboardSelection)return SelectionMatches();
         return MatchesCurrent()&&selectedText!=null&&await CopySelection(cancel)==selectedText;
     }
     public async Task<bool> DictationTargetMatchesAsync(CancellationToken cancel){
-        if(!MatchesCurrent())return false;
+        if(!await MatchesCurrentAsync(cancel))return false;
         if(selectedText!=null)return selectedText.Length==0&&SelectionMatches();
         return String.IsNullOrWhiteSpace(await CopySelection(cancel));
     }
     async Task<string> CopySelection(CancellationToken cancel) {
-        if(IsPassword||!MatchesCurrent())return null;
+        if(IsPassword||!await MatchesCurrentAsync(cancel))return null;
         cancel.ThrowIfCancellationRequested();
-        if(!MatchesCurrent())throw new InvalidOperationException("The focused text box changed. Try again.");
+        if(!await MatchesCurrentAsync(cancel))throw new InvalidOperationException("The focused text box changed. Try again.");
         IDataObject previous=ClipboardBackup.Take();int before=Native.ClipboardSequence(),copied=0;
         try {
             if(!Native.Copy())throw new InvalidOperationException("Windows blocked reading the selected text. Copy it and try again.");
             for(int i=0;i<12;i++){
                 await Task.Delay(15);
-                if(!MatchesCurrent())throw new InvalidOperationException("The focused text box changed. Try again.");
+                if(!await MatchesCurrentAsync(cancel))throw new InvalidOperationException("The focused text box changed. Try again.");
                 if(Native.ClipboardSequence()==before)continue;
                 copied=Native.ClipboardSequence();
                 string text=Clipboard.ContainsText()?Clipboard.GetText():null;

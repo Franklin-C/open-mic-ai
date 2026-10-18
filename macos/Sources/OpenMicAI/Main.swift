@@ -19,15 +19,25 @@ import SwiftUI
         panel.titleVisibility = .hidden; panel.titlebarAppearsTransparent = true; panel.isMovableByWindowBackground = true; panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.hidesOnDeactivate = false; panel.isReleasedWhenClosed = false
         panel.contentView = NSHostingView(rootView: FloatingView(state: state)); panel.setFrameAutosaveName("OpenMicAI-bar")
-        state.showMain = { [weak self] in self?.openApp() }; state.showBar = { [weak self] in self?.panel.orderFrontRegardless() }; state.hideBar = { [weak self] in self?.panel.orderOut(nil) }
+        state.showMain = { [weak self] in self?.openApp() }; state.showBar = { [weak self] in self?.presentBar() }; state.hideBar = { [weak self] in self?.panel.orderOut(nil) }
+        for kind in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] { panel.standardWindowButton(kind)?.isHidden = true }
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength); item.button?.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Open Mic AI")
         let menu = NSMenu(); menu.addItem(withTitle: "Open app", action: #selector(openApp), keyEquivalent: ""); menu.addItem(withTitle: "Dictate", action: #selector(dictate), keyEquivalent: ""); menu.addItem(.separator()); menu.addItem(withTitle: "Quit Open Mic AI", action: #selector(quit), keyEquivalent: "q"); item.menu = menu
         let appMenu = NSMenu(); let appItem = NSMenuItem(); appMenu.addItem(appItem); appItem.submenu = menu.copy() as? NSMenu
         let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: ""); let edit = NSMenu(title: "Edit")
         edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"); edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"); edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"); editItem.submenu = edit; appMenu.addItem(editItem); NSApplication.shared.mainMenu = appMenu
-        openApp(); if state.preferences.showBar { panel.orderFrontRegardless() }
+        openApp(); if state.preferences.showBar { presentBar() }
     }
     @objc func openApp() { window.makeKeyAndOrderFront(nil); NSApplication.shared.activate(ignoringOtherApps: true) }
+    func presentBar() {
+        let old = panel.frame
+        let compact = state.phase == "idle"
+        panel.setContentSize(NSSize(width: compact ? 204 : 440, height: compact ? 46 : 310))
+        let screen = panel.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? old
+        let x = max(screen.minX, min(old.midX-panel.frame.width/2, screen.maxX-panel.frame.width))
+        let y = max(screen.minY, min(old.minY, screen.maxY-panel.frame.height))
+        panel.setFrameOrigin(NSPoint(x: x, y: y)); panel.orderFrontRegardless()
+    }
     @objc func dictate() { state.shortcut() }
     @objc func quit() { NSApplication.shared.terminate(nil) }
     func windowShouldClose(_ sender: NSWindow) -> Bool { if state == nil { return true }; sender.orderOut(nil); return false }

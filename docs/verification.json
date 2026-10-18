@@ -1,11 +1,11 @@
 {
-  "version": "3.7.0",
+  "version": "3.7.1",
   "windows": {
     "complete": true,
     "scope": "Synthetic transcribed text with resident Qwen3-4B-Instruct-2507-Q3_K_S, isolated native UI/paste fixtures and offline guards. All 19 automatic layouts: three dictated examples each, 19 selected rewrites, eight ordinary messages, and vocabulary/snippets in all four styles. Additional checks exercise the spoken rewrite entry point and repaired table/outline renderers. Counts overlap; these are not speech-accuracy measurements or results for every model. No user history is published.",
     "checks_by_suite": {
-      "history-checks": 171,
-      "core-checks": 93,
+      "history-checks": 177,
+      "core-checks": 96,
       "media-import-checks": 26,
       "quality-model-cases": 88,
       "spoken-selected-layout-cases": 19,
@@ -18,7 +18,9 @@
       "output": 72,
       "total": 2790,
       "persistence_migration_opt_out_and_clear": "Checked with synthetic fixtures"
-    }
+    },
+    "formatting_model_capture_version": "3.7.0",
+    "focus_and_bar_checks": "3.7.1: native editor HWND stability, stable editor identity and bounds, changed-field rejection, automatic card dismissal, independent copy-recent and Open app icons, hold-to-talk separation and 204x38 compact bar. Editor identity refresh is simulated in native fixtures; browser-specific real-device behavior is not exhaustively tested."
   },
   "macos": {
     "scope": "Native builds, Swift formatting/personalization/token and media-decoder tests, package resources and engine executable checks. Real-device microphone and paste testing remains. Windows model results are not Mac speech-engine measurements.",

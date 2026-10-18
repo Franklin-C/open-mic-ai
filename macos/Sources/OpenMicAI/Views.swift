@@ -243,12 +243,21 @@ struct ActivityView: View {
 @MainActor struct FloatingView: View {
     @ObservedObject var state: AppState
     var body: some View {
+        if state.phase == "idle" {
+            HStack(spacing: 8) {
+                Button { state.shortcut() } label: { Label("Dictate", systemImage: "mic.fill").foregroundStyle(.red) }.help("Dictate")
+                Spacer(minLength: 0)
+                Button { state.copy(state.recentText) } label: { Image(systemName: "doc.on.doc") }.disabled(state.recentText.isEmpty).help("Copy recent transcription").accessibilityLabel("Copy recent transcription")
+                Button { state.showMain() } label: { Image(systemName: "square.grid.2x2") }.help("Open app").accessibilityLabel("Open app")
+                Button { state.hideFloatingBar() } label: { Image(systemName: "xmark") }.help("Hide bar").accessibilityLabel("Hide bar")
+            }.buttonStyle(.plain).padding(10).frame(width: 204, height: 46).background(.white).tint(.red).preferredColorScheme(.light)
+        } else {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "mic.fill").foregroundStyle(.red)
                 if state.phase == "ai" || state.phase == "transcribing" { ProgressView().controlSize(.small); Text(state.phase == "ai" ? "Adjusting with AI…" : "Transcribing…") }
                 else { Text(state.phase == "recording" ? "Listening…" : "Open Mic AI").font(.headline) }
-                Spacer(); Button("Open app") { state.showMain() }
+                Spacer(); Button { state.showMain() } label: { Image(systemName: "square.grid.2x2") }.help("Open app").accessibilityLabel("Open app")
                 Button { state.cancel() } label: { Image(systemName: "xmark") }
             }
             if state.phase == "actions" {
@@ -270,5 +279,6 @@ struct ActivityView: View {
             }
             if !state.message.isEmpty { Text(state.message).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
         }.padding(18).frame(width: 440).background(.white).tint(.red).preferredColorScheme(.light)
+        }
     }
 }
