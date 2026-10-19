@@ -4,6 +4,8 @@ In Open Mic AI 3.8 or later, open **Settings → System → Stream Deck → Inst
 Confirm installation in Stream Deck, then drag an **Open Mic AI** action onto a key.
 The installer is included in the app; no extra download or pairing code is needed.
 
+![Stream Deck installer in Settings](images/streamdeck-settings.png)
+
 Requires the Stream Deck desktop app **7.1 or later**, on Windows or macOS. Keep
 Open Mic AI running with models loaded for instant access. No separate Node.js
 installation is needed.
