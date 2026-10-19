@@ -174,6 +174,9 @@ the history limit. [Stats guide and counting details](docs/stats.md).
 </tr><tr>
 <td><img src="docs/images/hub-snippets.png" alt="Inline snippets editor"></td>
 <td><img src="docs/images/hub-vocabulary.png" alt="Personal vocabulary and spelling corrections"></td>
+</tr><tr>
+<td><img src="docs/images/general-settings.png" alt="System settings with switches that save immediately"></td>
+<td><img src="docs/images/streamdeck-settings.png" alt="Stream Deck integration with a red Install plugin button"></td>
 </tr></table>
 
 ## Privacy

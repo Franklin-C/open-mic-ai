@@ -282,16 +282,26 @@ struct ActivityView: View {
                 Image(systemName: "square.grid.3x3.fill").font(.system(size: 26)).foregroundStyle(.red).frame(width: 40, height: 40)
                 VStack(alignment: .leading, spacing: 5) { Text("Stream Deck").font(.headline); Text("Dictate from your Stream Deck.").font(.caption).foregroundStyle(.secondary) }
                 Spacer()
-                Button("Install plugin") { state.installStreamDeck() }.buttonStyle(.bordered)
+                Button("Install plugin") { state.installStreamDeck() }.buttonStyle(.borderedProminent)
             }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.15)))
             Text("Stream Deck restarts briefly to install.").font(.caption).foregroundStyle(.secondary)
         }
     }
+    func systemToggle(_ title: String, _ detail: String, _ value: Binding<Bool>) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title).font(.system(size: 14, weight: .semibold))
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Toggle(title, isOn: value).labelsHidden().toggleStyle(.switch).onChange(of: value.wrappedValue) { _ in state.save() }
+        }.padding(18).background(.white, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.15)))
+    }
     @State private var confirmStatsReset = false
     var system: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Toggle("Save history locally", isOn: $state.preferences.saveHistory).onChange(of: state.preferences.saveHistory) { _ in state.save() }
-            Toggle("Track usage locally", isOn: $state.preferences.trackUsage).onChange(of: state.preferences.trackUsage) { _ in state.save() }
+            systemToggle("Save history locally", "Keep original and edited text in History", $state.preferences.saveHistory)
+            systemToggle("Track usage locally", "Save statistics on this computer", $state.preferences.trackUsage)
             Button(confirmStatsReset ? "Confirm reset" : "Reset usage") { if confirmStatsReset { state.resetStats(); confirmStatsReset = false } else { confirmStatsReset = true } }
             Button("Open data folder") { NSWorkspace.shared.open(state.root) }
             Text("No audio files are saved. Closing the window keeps the app in the menu bar.").font(.caption).foregroundStyle(.secondary)

@@ -1,5 +1,5 @@
 {
-  "version": "3.11.0",
+  "version": "3.11.1",
   "windows": {
     "complete": true,
     "scope": "Synthetic transcribed text with resident Qwen3-4B-Instruct-2507-Q3_K_S, isolated native UI/paste fixtures and offline guards. All 19 automatic layouts: three dictated examples each, 19 selected rewrites, eight ordinary messages, and vocabulary/snippets in all four styles. Additional checks exercise the spoken rewrite entry point and repaired table/outline renderers. Counts overlap; these are not speech-accuracy measurements or results for every model. No user history is published.",
@@ -14,7 +14,8 @@
       "outline-regression-cases": 4,
       "dictation-bar-checks": 44,
       "mouse-shortcut-checks": 53,
-      "statistics-and-taskbar-command-checks": 68
+      "statistics-and-taskbar-command-checks": 68,
+      "general-settings-checks": 38
     },
     "ai_tokens": {
       "live_reported_completion_responses": 6,
@@ -32,7 +33,8 @@
     "stats_scope": "3.11.0: synthetic aggregate fixtures verify date boundaries, equal-length comparisons, weighted speaking speed, eligible fastest records, time-saved estimates, local-time buckets, token attribution, streaks, migration, privacy, reset and persistence. UI fixtures verify date filters, keyboard-readable charts and Stats below History. Native shell tests use an isolated Jump List identity, verify fixed command links, publish/clear tasks and deliver each IPC command. No transcripts or real usage are published.",
     "taskbar_settings_scope": "3.11.0: Taskbar has its own Access subpage with independently persisted live words, status indicator, quick buttons and app-owned right-click actions. Hidden buttons cannot dispatch. Explorer accepts native toolbar and DWM calls; restore dispatches Open app. Windows-owned Pin/Close remain Windows-controlled. Screenshots are app-rendered synthetic fixtures, not a captured Explorer flyout. Follow-up: the tray menu uses the same selected commands, removes legacy extras, updates enabled states and Stop recording, and opens the app on a single left click. Native isolated editor/popup tests verify original-field focus restoration and closed-window rejection for tray Dictate. Fixture FlowContext instances use isolated Stream Deck connection files.",
     "history_checks_last_full_pass_version": "3.10.0",
-    "history_checks_current_attempt": "3.11.0: all new navigation and settings checks passed. The full live-desktop suite did not complete; foreground-sensitive assertions failed while other desktop applications were active. Targeted core, Stats, tray/taskbar, mouse and Stream Deck checks passed separately."
+    "history_checks_current_attempt": "3.11.0: all new navigation and settings checks passed. The full live-desktop suite did not complete; foreground-sensitive assertions failed while other desktop applications were active. Targeted core, Stats, tray/taskbar, mouse and Stream Deck checks passed separately.",
+    "general_settings_scope": "3.11.1: existing settings fixtures verify all six General switches save immediately and preserve shortcut and speech/language model choices. General and Integrations screenshots were rendered with synthetic preferences and visually inspected. The plugin installer uses the existing red primary-button style. Mac uses matching switch rows and a prominent install button."
   },
   "streamdeck": {
     "version": "1.0.1",

@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace LocalFlow {
 public sealed class IntegrationCard : Panel {
-    public readonly Button Install=Theme.Button("Install plugin");
+    public readonly Button Install=Theme.Button("Install plugin",true);
     readonly Label title=new Label {Text="Stream Deck",AutoSize=true,Font=new Font("Segoe UI",11,FontStyle.Bold)},detail=new Label {Text="Dictate from your Stream Deck.",AutoSize=true,ForeColor=Theme.Muted};
     public IntegrationCard(){Size=new Size(700,104);Margin=new Padding(0,0,0,12);DoubleBuffered=true;Install.AutoSize=false;Install.Size=new Size(132,36);Install.AccessibleName="Install Stream Deck plugin";Controls.AddRange(new Control[]{title,detail,Install});Resize+=(s,e)=>Arrange();Arrange();}
     void Arrange(){title.Location=new Point(76,25);detail.Location=new Point(76,53);Install.Location=new Point(Math.Max(320,Width-152),34);detail.MaximumSize=new Size(Math.Max(180,Width-248),25);Invalidate();}
