@@ -9,6 +9,7 @@ $arguments = @('/nologo', '/target:winexe', '/platform:x64', '/optimize+', ('/ou
 $arguments += '/win32icon:' + (Join-Path $PSScriptRoot 'assets/open-mic-ai.ico')
 $arguments += '/resource:' + (Join-Path $PSScriptRoot 'assets/open-mic-ai.ico') + ',OpenMicAI.Icon.ico'
 $arguments += '/resource:' + (Join-Path $PSScriptRoot 'assets/open-mic-ai-ui.png') + ',OpenMicAI.Logo.png'
+$arguments += '/resource:' + (Join-Path $PSScriptRoot 'assets/OpenMicAI.streamDeckPlugin') + ',OpenMicAI.StreamDeck'
 if ($EmbeddedRuntime) { $arguments += '/resource:' + $EmbeddedRuntime + ',LocalFlow.Runtime.zip' }
 foreach ($reference in $references) { $arguments += '/reference:' + (Join-Path $framework $reference) }
 $arguments += '/reference:' + (Join-Path $framework 'WPF\UIAutomationClient.dll')

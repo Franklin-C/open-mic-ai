@@ -1,7 +1,7 @@
 name: Build and test
 on:
   push:
-    paths: ['windows/**', 'macos/**', '.github/workflows/**']
+    paths: ['windows/**', 'macos/**', 'streamdeck/**', '.github/workflows/**']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -10,6 +10,25 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  streamdeck:
+    runs-on: windows-2022
+    defaults:
+      run:
+        working-directory: streamdeck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: streamdeck/package-lock.json
+      - run: npm ci
+      - run: npm run pack
+      - run: npm test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenMicAI-StreamDeck
+          path: streamdeck/dist/*.streamDeckPlugin
   windows:
     runs-on: windows-2022
     steps:
@@ -20,6 +39,9 @@ jobs:
       - name: Word guards and bounded repair tests
         shell: powershell
         run: ./windows/validation/RunCoreChecks.ps1
+      - name: Local Stream Deck bridge tests
+        shell: powershell
+        run: ./windows/validation/RunStreamDeckChecks.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: OpenMicAI-Windows-source-build

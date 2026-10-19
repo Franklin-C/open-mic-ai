@@ -1,0 +1,114 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "UUID": "com.openmicai.controls",
+  "Name": "Open Mic AI",
+  "Version": "1.0.0.0",
+  "Author": "Open Mic AI",
+  "Description": "Local dictation and spoken AI edits from your Stream Deck.",
+  "URL": "https://github.com/Franklin-C/open-mic-ai",
+  "Category": "Open Mic AI",
+  "CategoryIcon": "images/plugin",
+  "Icon": "images/plugin",
+  "CodePath": "bin/plugin.mjs",
+  "SDKVersion": 2,
+  "Nodejs": {
+    "Version": "24"
+  },
+  "Software": {
+    "MinimumVersion": "7.1"
+  },
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    },
+    {
+      "Platform": "mac",
+      "MinimumVersion": "13"
+    }
+  ],
+  "Actions": [
+    {
+      "UUID": "com.openmicai.controls.dictate",
+      "Name": "Dictate",
+      "Icon": "images/mic",
+      "Controllers": [
+        "Keypad"
+      ],
+      "Tooltip": "Press to record. Press again to finish and paste. Selected text accepts spoken rewrite, translate and summarize instructions.",
+      "States": [
+        {
+          "Image": "images/mic",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "DisableAutomaticStates": true
+    },
+    {
+      "UUID": "com.openmicai.controls.hold",
+      "Name": "Hold to talk",
+      "Icon": "images/mic",
+      "Controllers": [
+        "Keypad"
+      ],
+      "Tooltip": "Hold to record. Release to finish and paste.",
+      "States": [
+        {
+          "Image": "images/mic",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "DisableAutomaticStates": true
+    },
+    {
+      "UUID": "com.openmicai.controls.copy",
+      "Name": "Copy recent",
+      "Icon": "images/copy",
+      "Controllers": [
+        "Keypad"
+      ],
+      "Tooltip": "Copy the most recent result.",
+      "States": [
+        {
+          "Image": "images/copy",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ]
+    },
+    {
+      "UUID": "com.openmicai.controls.open",
+      "Name": "Open app",
+      "Icon": "images/plugin",
+      "Controllers": [
+        "Keypad"
+      ],
+      "Tooltip": "Open Open Mic AI.",
+      "States": [
+        {
+          "Image": "images/plugin",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ]
+    },
+    {
+      "UUID": "com.openmicai.controls.cancel",
+      "Name": "Cancel",
+      "Icon": "images/cancel",
+      "Controllers": [
+        "Keypad"
+      ],
+      "Tooltip": "Cancel recording or the current AI edit.",
+      "States": [
+        {
+          "Image": "images/cancel",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ]
+    }
+  ]
+}

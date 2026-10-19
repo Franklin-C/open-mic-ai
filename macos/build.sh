@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 export MACOSX_DEPLOYMENT_TARGET=13.0
+cp ../windows/assets/OpenMicAI.streamDeckPlugin Sources/OpenMicAI/Resources/OpenMicAI.streamDeckPlugin
 swift test
 swift build -c release
 runtime="$PWD/.build/runtime"

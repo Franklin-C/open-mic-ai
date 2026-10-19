@@ -26,7 +26,7 @@ import SwiftUI
         let appMenu = NSMenu(); let appItem = NSMenuItem(); appMenu.addItem(appItem); appItem.submenu = menu.copy() as? NSMenu
         let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: ""); let edit = NSMenu(title: "Edit")
         edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"); edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"); edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"); editItem.submenu = edit; appMenu.addItem(editItem); NSApplication.shared.mainMenu = appMenu
-        openApp(); if state.preferences.showBar { presentBar() }
+        if !CommandLine.arguments.contains("--background") { openApp() }; if state.preferences.showBar { presentBar() }
     }
     @objc func openApp() { window.makeKeyAndOrderFront(nil); NSApplication.shared.activate(ignoringOtherApps: true) }
     func presentBar() {

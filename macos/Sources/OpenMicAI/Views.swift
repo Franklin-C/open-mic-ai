@@ -236,6 +236,12 @@ struct ActivityView: View {
             Toggle("Always show dictation bar", isOn: $state.preferences.showBar).onChange(of: state.preferences.showBar) { _ in state.save() }
             Toggle("Save history locally", isOn: $state.preferences.saveHistory).onChange(of: state.preferences.saveHistory) { _ in state.save() }
             Button("Open data folder") { NSWorkspace.shared.open(state.root) }
+            Divider()
+            HStack {
+                VStack(alignment: .leading, spacing: 5) { Text("Stream Deck").font(.headline); Text("Dictate, hold to talk, copy recent, or open the app.").font(.caption).foregroundStyle(.secondary) }
+                Spacer()
+                Button("Install plugin") { state.installStreamDeck() }.buttonStyle(.bordered)
+            }.padding(16).background(Color(white: 0.985), in: RoundedRectangle(cornerRadius: 12))
             Text("No audio files are saved. Closing the window keeps the app in the menu bar.").font(.caption).foregroundStyle(.secondary)
         }
     }

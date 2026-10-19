@@ -40,6 +40,8 @@ import OpenMicCore
     private var work: Task<Void, Never>?
     private var shortcutMonitor: Any?
     private var previewBusy = false
+    private var streamDeck: StreamDeckBridge?
+    private var streamDeckHolding = false
     var showMain: () -> Void = {}
     var showBar: () -> Void = {}
     var hideBar: () -> Void = {}
@@ -65,6 +67,7 @@ import OpenMicCore
         hotkey.released = { [weak self] in if let self, self.phase == "recording", self.recordingPreferences.recordingMode == .hold { self.finishRecording() } }
         do { try hotkey.register(code: preferences.keyCode, modifiers: preferences.keyModifiers) }
         catch { message = error.localizedDescription }
+        streamDeck = try? StreamDeckBridge(root: root) { [weak self] command in self?.streamDeckCommand(command) ?? ["ok": false] }
         Task { await loadModels(download: false) }
     }
     func write<T: Encodable>(_ name: String, _ value: T) {
@@ -82,7 +85,7 @@ import OpenMicCore
         modelBusy = true; defer { modelBusy = false }
         do { try await models.load(preferences, download: download) } catch { status = error.localizedDescription }
     }
-    func shortcut() {
+    func shortcut(recordingMode: RecordingMode? = nil) {
         if phase == "recording" { if recordingPreferences.recordingMode != .hold { finishRecording() }; return }
         if phase == "actions" { startRecording(instruction: true); return }
         guard phase != "ai", phase != "transcribing", !modelBusy, !importBusy else { return }
@@ -91,12 +94,13 @@ import OpenMicCore
         if target?.password == true { message = "Choose a text box outside a password field."; return }
         selection = target?.selected ?? ""
         if selection.count > 9000 { message = "Select up to 9,000 characters."; return }
-        startRecording(instruction: !selection.isEmpty)
+        startRecording(instruction: !selection.isEmpty, recordingMode: recordingMode)
     }
-    func startRecording(instruction: Bool) {
+    func startRecording(instruction: Bool, recordingMode: RecordingMode? = nil) {
         guard phase != "recording" else { return }
         if instruction && target?.matches(requireSelection: true) != true { cancel(); message = "Selection changed. Select the text again."; return }
         voiceInstruction = instruction; recordingPreferences = preferences; let current = UUID(); epoch = current
+        if let recordingMode { recordingPreferences.recordingMode = recordingMode }
         work = Task {
             let allowed = await AVCaptureDevice.requestAccess(for: .audio)
             guard !Task.isCancelled, epoch == current else { return }
@@ -242,5 +246,20 @@ import OpenMicCore
         let time = Int(chunk.seconds); importStatus = String(format: "Transcribing · %02d:%02d:%02d", time / 3600, (time / 60) % 60, time % 60)
     }
     func cancelImport() { importTask?.cancel() }
-    func shutdown() { cancelImport(); cancel(); cancelShortcut(); models.shutdown() }
+    func shutdown() { streamDeck?.stop(); cancelImport(); cancel(); cancelShortcut(); models.shutdown() }
+    func installStreamDeck() { do { message = try StreamDeckIntegration.install() } catch { message = error.localizedDescription } }
+    private func streamDeckCommand(_ command: String) -> [String: Any] {
+        switch command {
+        case "open": showMain()
+        case "copy": guard !recentText.isEmpty else { return ["ok": false, "error": "No recent text"] }; copy(recentText)
+        case "cancel": streamDeckHolding = false; cancel()
+        case "toggle": if phase == "recording" { finishRecording() } else { shortcut(recordingMode: .toggle) }
+        case "hold.down":
+            guard !streamDeckHolding, (phase == "idle" || phase == "result"), !modelBusy, !importBusy, models.ready else { return ["ok": false, "error": "Not ready"] }
+            streamDeckHolding = true; shortcut(recordingMode: .hold)
+        case "hold.up": if streamDeckHolding { streamDeckHolding = false; if phase == "recording" { finishRecording() } else if phase == "idle" || phase == "result" { cancel() } }
+        default: break
+        }
+        return ["ok": true, "ready": models.ready && !modelBusy, "phase": phase == "recording" ? "recording" : (phase == "ai" || phase == "transcribing" || importBusy || modelBusy ? "processing" : "idle"), "hasRecent": !recentText.isEmpty]
+    }
 }

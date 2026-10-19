@@ -45,6 +45,10 @@ model downloads; dictation and editing run locally afterward. The app downloads
 weights separately so the executable stays small. Download sizes are shown in the
 model selectors.
 
+**Stream Deck:** open **Settings → System → Stream Deck → Install plugin**, confirm
+in Stream Deck, and drag Dictate onto a key. Includes hold-to-talk, copy recent,
+Open app and Cancel, with recording status on the keys. [Setup guide](docs/stream-deck.md).
+
 ## Choose how your words appear
 
 | Style | What it does |

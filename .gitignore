@@ -25,3 +25,10 @@ package-manifest.json
 work/
 *.wav
 __pycache__/
+node_modules/
+streamdeck/com.openmicai.controls.sdPlugin/bin/
+streamdeck/com.openmicai.controls.sdPlugin/images/
+streamdeck/com.openmicai.controls.sdPlugin/LICENSE.txt
+streamdeck/com.openmicai.controls.sdPlugin/THIRD_PARTY_NOTICES.txt
+streamdeck/com.openmicai.controls.sdPlugin/package.json
+macos/Sources/OpenMicAI/Resources/OpenMicAI.streamDeckPlugin

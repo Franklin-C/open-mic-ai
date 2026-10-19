@@ -80,6 +80,8 @@ public sealed class FlowContext : ApplicationContext {
     readonly ToolStripMenuItem copyRaw=new ToolStripMenuItem("Copy last transcript") {Enabled=false};
     readonly SynchronizationContext ui;
     readonly RegisteredWaitHandle reopenWait;
+    StreamDeckBridge streamDeck;
+    bool streamDeckHolding;
     readonly System.Windows.Forms.Timer level=new System.Windows.Forms.Timer {Interval=80};
     readonly System.Windows.Forms.Timer health=new System.Windows.Forms.Timer {Interval=30000};
     DictationSession session;
@@ -133,10 +135,23 @@ public sealed class FlowContext : ApplicationContext {
         Microsoft.Win32.SystemEvents.PowerModeChanged+=PowerChanged;
         if(settings.LaunchAtLogin)try{ConfigureStartup();}catch(Exception error){ui.Post(s=>Notify("Could not update startup: "+error.Message),null);}
         if(reopen!=null)reopenWait=ThreadPool.RegisterWaitForSingleObject(reopen,(s,t)=>ui.Post(_=>ShowApp(),null),null,Timeout.Infinite,false);
+        try{streamDeck=new StreamDeckBridge(ui,StreamDeckCommand);}catch(Exception error){Debug.WriteLine("Stream Deck unavailable: "+error.Message);}
         Boot();
         if(openWindow)ui.Post(s=>ShowApp(),null);
     }
     static Icon MakeIcon(){return Brand.CreateIcon();}
+    object StreamDeckCommand(string action){
+        if(exiting)return new {ok=false};
+        if(action=="open")ShowApp();
+        else if(action=="copy"){if(!Copy(pill.RecentText))return new {ok=false,error="No recent text"};}
+        else if(action=="cancel"){streamDeckHolding=false;Cancel();}
+        else if(action=="toggle"){if(session!=null||selectionProbe!=null||actionSession!=null)Toggle();else if(CanDictate())Begin(false,null,null,"Click to start / stop");}
+        else if(action=="hold.down"){
+            if(Busy||booting||models==null||!models.Alive)return new {ok=false,error="Not ready"};
+            streamDeckHolding=true;Begin(false,null,null,"Hold to talk");
+        }else if(action=="hold.up"&&streamDeckHolding){streamDeckHolding=false;if(selectionProbe!=null)pendingHoldReleased=true;if(session!=null&&!session.Stopped)Finish(session);}
+        return new {ok=true,ready=models!=null&&models.Alive&&!booting,phase=session!=null&&!session.Stopped?"recording":Busy?"processing":"idle",hasRecent=!String.IsNullOrWhiteSpace(pill.RecentText)};
+    }
     async void Boot(){await BootModels();}
     async Task BootModels() {
         if(exiting||booting||Busy)return;
@@ -224,10 +239,10 @@ public sealed class FlowContext : ApplicationContext {
         }
         RunTextAction(action);
     }
-    async void Begin(bool edit,FocusTarget captured=null,string capturedSelection=null) {
+    async void Begin(bool edit,FocusTarget captured=null,string capturedSelection=null,string recordingMode=null) {
         if(selectionProbe!=null)return;
         CancellationTokenSource probe=new CancellationTokenSource();selectionProbe=probe;pendingHoldReleased=false;
-        TextRules rules=personalization.Snapshot();FocusTarget target=captured??FocusTarget.Capture();string application=ApplicationName(target.Window);AppStyle style=StyleRouting.Resolve(settings,application);DictationSession current=new DictationSession {Target=target,Application=application,Vocabulary=rules.Guidance(settings.Vocabulary),Style=style.Style,Custom=style.Custom,Rewrite=style.Cleanup!="None"&&style.Style!="Original transcript",Cleanup=style.Cleanup,PolishReworded=style.PolishReworded,Rules=rules,RecordingMode=RecordingModes.Normalize(settings.RecordingMode)};
+        TextRules rules=personalization.Snapshot();FocusTarget target=captured??FocusTarget.Capture();string application=ApplicationName(target.Window);AppStyle style=StyleRouting.Resolve(settings,application);DictationSession current=new DictationSession {Target=target,Application=application,Vocabulary=rules.Guidance(settings.Vocabulary),Style=style.Style,Custom=style.Custom,Rewrite=style.Cleanup!="None"&&style.Style!="Original transcript",Cleanup=style.Cleanup,PolishReworded=style.PolishReworded,Rules=rules,RecordingMode=RecordingModes.Normalize(recordingMode??settings.RecordingMode)};
         try {
             if(current.Target.IsPassword){Notify("Choose a text field outside a password box.");return;}
             string selection=capturedSelection??await current.Target.CaptureSelectionAsync(probe.Token);
@@ -239,7 +254,7 @@ public sealed class FlowContext : ApplicationContext {
             if(settings.Sounds)System.Media.SystemSounds.Beep.Play();
             if(settings.MutePlayback)current.Playback=new PlaybackMute();
             session=current; current.Mic.Start();current.RecordingTime.Start();
-            if(current.RecordingMode=="Hold to talk"){keyboardHeld=heldSession=current;if(pendingHoldReleased){Finish(current);return;}}
+            if(current.RecordingMode=="Hold to talk"){if(recordingMode==null)keyboardHeld=heldSession=current;if(pendingHoldReleased){Finish(current);return;}}
             shortcut.ListenForEscape(true);if(current.SelectedText!=null)pill.ShowVoiceInstruction(current.SelectedText,current.Target.Window);else{pill.Prepare("Listening",true);pill.Place(current.Target.Window);pill.Reveal();}SetStatus(current.RecordingMode=="Hold to talk"?"Listening · release to finish":current.RecordingMode=="Automatic"?"Listening · pauses finish recording":"Listening · press again to finish");
         } catch(OperationCanceledException){}catch(Exception e){current.Cancel.Cancel();if(current.Mic!=null)current.Mic.Dispose();if(current.Playback!=null)current.Playback.Dispose();session=null;Notify(e.Message);}
         finally {if(selectionProbe==probe)selectionProbe=null;probe.Dispose();if(session!=current){current.Cancel.Dispose();current.PreviewCancel.Dispose();}}
@@ -299,7 +314,7 @@ public sealed class FlowContext : ApplicationContext {
     }
     [System.Runtime.InteropServices.DllImport("user32.dll",EntryPoint="GetClipboardSequenceNumber")]static extern int ClipboardSequence();
     void Cancel(){bool probing=selectionProbe!=null;if(probing)selectionProbe.Cancel();TextActionSession action=actionSession;if(action!=null){actionSession=null;action.Cancel.Cancel();if(!action.Processing)action.Dispose();}DictationSession current=session;if(current!=null){current.Cancel.Cancel();current.Stop();session=null;}if(action==null&&current==null&&!probing)return;shortcut.ListenForEscape(false);pill.Conceal();SetStatus("Ready · "+settings.Shortcut);}
-    protected override void ExitThreadCore(){exiting=true;importer.Cancel();if(reopenWait!=null)reopenWait.Unregister(null);pill.Persistent=false;Cancel();holdMouse.Dispose();if(hub!=null)hub.Close();history.FlushAsync().GetAwaiter().GetResult();personalization.FlushAsync().GetAwaiter().GetResult();usage.FlushAsync().GetAwaiter().GetResult();level.Dispose();health.Dispose();Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;shortcut.Dispose();pill.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();if(models!=null)models.Dispose();base.ExitThreadCore();}
+    protected override void ExitThreadCore(){exiting=true;if(streamDeck!=null)streamDeck.Dispose();importer.Cancel();if(reopenWait!=null)reopenWait.Unregister(null);pill.Persistent=false;Cancel();holdMouse.Dispose();if(hub!=null)hub.Close();history.FlushAsync().GetAwaiter().GetResult();personalization.FlushAsync().GetAwaiter().GetResult();usage.FlushAsync().GetAwaiter().GetResult();level.Dispose();health.Dispose();Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;shortcut.Dispose();pill.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();if(models!=null)models.Dispose();base.ExitThreadCore();}
 }
 
 public static class Program {
