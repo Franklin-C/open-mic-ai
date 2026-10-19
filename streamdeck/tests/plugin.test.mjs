@@ -47,8 +47,12 @@ test('packaged plugin registers and controls a local app through real SDK events
     send('keyDown', 'dictate'); await waitFor(() => calls.includes('toggle'));
     await waitFor(() => messages.some(x => x.event === 'setTitle' && x.payload.title === 'Stop'));
     send('keyDown', 'dictate'); await waitFor(() => calls.filter(x => x === 'toggle').length === 2);
+    send('keyDown', 'hold'); await waitFor(() => calls.includes('hold.down'));
+    await waitFor(() => messages.some(x => x.event === 'setTitle' && x.context === 'hold' && x.payload.title === 'Release'));
+    send('keyUp', 'hold'); await waitFor(() => calls.includes('hold.up') && phase === 'idle');
     send('keyDown', 'hold'); send('keyUp', 'hold');
-    await waitFor(() => calls.includes('hold.down') && calls.includes('hold.up') && phase === 'idle');
+    await waitFor(() => calls.filter(x => x === 'hold.down').length === 2 && calls.filter(x => x === 'hold.up').length >= 2 && phase === 'idle');
+    phase = 'processing'; await waitFor(() => messages.some(x => x.event === 'setTitle' && x.payload.title === 'Working…'));
     for (const kind of ['copy', 'open', 'cancel']) { send('keyDown', kind); await waitFor(() => calls.includes(kind)); }
     assert.ok(messages.some(x => x.event === 'showOk' && x.context === 'copy'));
     assert.equal(stderr, '');
