@@ -1,6 +1,6 @@
 # Stream Deck
 
-In Open Mic AI 3.8.1 or later, open **Settings → System → Stream Deck → Install plugin**.
+In Open Mic AI 3.9.0 or later, open **Settings → Integrations → Stream Deck → Install plugin**.
 On Windows, this installs the bundled files and briefly restarts Stream Deck.
 The button reports when the plugin is installed and connected. Then drag an
 **Open Mic AI** action onto a key. On Mac, confirm installation in Stream Deck.

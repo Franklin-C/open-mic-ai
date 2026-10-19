@@ -32,7 +32,7 @@ import SwiftUI
     func presentBar() {
         let old = panel.frame
         let compact = state.phase == "idle"
-        panel.setContentSize(NSSize(width: compact ? 204 : 440, height: compact ? 46 : 310))
+        panel.setContentSize(NSSize(width: compact ? state.preferences.barLayout.idleWidth : 440, height: compact ? state.preferences.barLayout.idleHeight : 310))
         let screen = panel.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? old
         let x = max(screen.minX, min(old.midX-panel.frame.width/2, screen.maxX-panel.frame.width))
         let y = max(screen.minY, min(old.minY, screen.maxY-panel.frame.height))

@@ -180,13 +180,15 @@ struct ActivityView: View {
     @ObservedObject var state: AppState
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Picker("", selection: $state.section) { ForEach(["Style", "Models", "Shortcuts", "System"], id: \.self) { Text($0) } }.pickerStyle(.segmented).labelsHidden()
+            Picker("", selection: $state.section) { ForEach(["Style", "Models", "Shortcuts", "Dictation bar", "Integrations", "System"], id: \.self) { Text($0) } }.pickerStyle(.segmented).labelsHidden()
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     switch state.section {
                     case "Style": style
                     case "Models": models
                     case "Shortcuts": shortcuts
+                    case "Dictation bar": dictationBar
+                    case "Integrations": integrations
                     default: system
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
@@ -231,17 +233,36 @@ struct ActivityView: View {
             Text("macOS Accessibility access enables selection capture and paste. Some apps expose limited text access; Copy remains available.").font(.caption).foregroundStyle(.secondary)
         }
     }
-    var system: some View {
+    var dictationBar: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Toggle("Always show dictation bar", isOn: $state.preferences.showBar).onChange(of: state.preferences.showBar) { _ in state.save() }
-            Toggle("Save history locally", isOn: $state.preferences.saveHistory).onChange(of: state.preferences.saveHistory) { _ in state.save() }
-            Button("Open data folder") { NSWorkspace.shared.open(state.root) }
-            Divider()
+            Toggle("Show dictation bar", isOn: $state.preferences.showBar).onChange(of: state.preferences.showBar) { _ in state.save() }
+            Text("Keep the bar visible between recordings.").font(.caption).foregroundStyle(.secondary)
+            Text("Layout").font(.headline)
+            HStack(spacing: 12) {
+                ForEach(BarLayout.allCases, id: \.self) { layout in
+                    Button { state.preferences.barLayout = layout; state.save() } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack { Text(layout.rawValue).font(.headline); Spacer(); Image(systemName: state.preferences.barLayout == layout ? "checkmark.circle.fill" : "circle").foregroundStyle(.red) }
+                            Text(layout == .horizontal ? "Compact toolbar" : "Stacked controls").font(.caption).foregroundStyle(.secondary)
+                        }.padding(18).frame(maxWidth: .infinity, alignment: .leading).background(state.preferences.barLayout == layout ? Color.red.opacity(0.05) : .white, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(state.preferences.barLayout == layout ? Color.red : Color.gray.opacity(0.2)))
+                    }.buttonStyle(.plain)
+                }
+            }
+        }
+    }
+    var integrations: some View {
+        VStack(alignment: .leading, spacing: 18) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) { Text("Stream Deck").font(.headline); Text("Dictate, hold to talk, copy recent, or open the app.").font(.caption).foregroundStyle(.secondary) }
                 Spacer()
                 Button("Install plugin") { state.installStreamDeck() }.buttonStyle(.bordered)
             }.padding(16).background(Color(white: 0.985), in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+    var system: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Toggle("Save history locally", isOn: $state.preferences.saveHistory).onChange(of: state.preferences.saveHistory) { _ in state.save() }
+            Button("Open data folder") { NSWorkspace.shared.open(state.root) }
             Text("No audio files are saved. Closing the window keeps the app in the menu bar.").font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -250,13 +271,16 @@ struct ActivityView: View {
     @ObservedObject var state: AppState
     var body: some View {
         if state.phase == "idle" {
-            HStack(spacing: 8) {
-                Button { state.shortcut() } label: { Label("Dictate", systemImage: "mic.fill") }.buttonStyle(FloatingDictateStyle()).help("Dictate")
-                Spacer(minLength: 0)
+            let vertical = state.preferences.barLayout == .vertical
+            let layout = vertical ? AnyLayout(VStackLayout(spacing: 4)) : AnyLayout(HStackLayout(spacing: 8))
+            layout {
+                if vertical { Capsule().fill(Color.gray.opacity(0.4)).frame(width: 14, height: 3).frame(height: 10) }
+                Button { state.shortcut() } label: { if vertical { Image(systemName: "mic.fill").frame(width: 22, height: 28) } else { Label("Dictate", systemImage: "mic.fill") } }.buttonStyle(FloatingDictateStyle(compact: vertical)).help("Dictate").accessibilityLabel("Dictate")
+                if !vertical { Spacer(minLength: 0) }
                 Button { state.copy(state.recentText) } label: { Image(systemName: "doc.on.doc").frame(width: 22, height: 28) }.buttonStyle(FloatingDictateStyle(compact: true)).disabled(state.recentText.isEmpty).help("Copy recent transcription").accessibilityLabel("Copy recent transcription")
                 Button { state.showMain() } label: { FloatingAppLogo() }.buttonStyle(FloatingDictateStyle(compact: true)).help("Open app").accessibilityLabel("Open app")
                 Button { state.hideFloatingBar() } label: { Image(systemName: "xmark") }.help("Hide bar").accessibilityLabel("Hide bar")
-            }.buttonStyle(.plain).padding(10).frame(width: 204, height: 46).background(.white).tint(.red).preferredColorScheme(.light)
+            }.buttonStyle(.plain).padding(vertical ? 6 : 10).frame(width: state.preferences.barLayout.idleWidth, height: state.preferences.barLayout.idleHeight).background(.white).tint(.red).preferredColorScheme(.light)
         } else {
         VStack(alignment: .leading, spacing: 12) {
             HStack {

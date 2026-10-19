@@ -45,7 +45,12 @@ model downloads; dictation and editing run locally afterward. The app downloads
 weights separately so the executable stays small. Download sizes are shown in the
 model selectors.
 
-**Stream Deck:** open **Settings → System → Stream Deck → Install plugin**, then
+**Dictation bar:** choose **Settings → Dictation bar** to keep it visible and
+switch between horizontal and vertical controls. Recording and AI cards expand
+when needed. On Windows, you can also enable a taskbar control: hover to see live
+words, stop recording, copy the latest result, or open the app. [Bar settings and previews](docs/dictation-bar.md).
+
+**Stream Deck:** open **Settings → Integrations → Stream Deck → Install plugin**, then
 drag Dictate onto a key. Windows briefly restarts Stream Deck to install; Mac uses
 Stream Deck's confirmation. Includes hold-to-talk, copy recent,
 Open app and Cancel, with recording status on the keys. [Setup guide](docs/stream-deck.md).

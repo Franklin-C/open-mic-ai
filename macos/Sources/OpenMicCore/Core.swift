@@ -6,6 +6,11 @@ public enum WritingStyle: String, CaseIterable, Codable {
 public enum RecordingMode: String, CaseIterable, Codable {
     case toggle = "Click to start / stop", hold = "Hold to talk", automatic = "Automatic"
 }
+public enum BarLayout: String, CaseIterable, Codable {
+    case horizontal = "Horizontal", vertical = "Vertical"
+    public var idleWidth: Double { self == .vertical ? 44 : 204 }
+    public var idleHeight: Double { self == .vertical ? 166 : 46 }
+}
 public struct Preferences: Codable {
     public var style: WritingStyle = .polish
     public var reworded = true
@@ -18,8 +23,29 @@ public struct Preferences: Codable {
     public var languageModel = "Qwen3-4B-Instruct-2507-Q3_K_S.gguf"
     public var saveHistory = true
     public var showBar = true
+    public var barLayout: BarLayout = .horizontal
     public var translationLanguage = "French"
     public init() {}
+    enum CodingKeys: String, CodingKey {
+        case style, reworded, custom, recordingMode, keyCode, keyModifiers, shortcutLabel, speechModel, languageModel, saveHistory, showBar, barLayout, translationLanguage
+    }
+    public init(from decoder: Decoder) throws {
+        self.init()
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        style = try values.decodeIfPresent(WritingStyle.self, forKey: .style) ?? style
+        reworded = try values.decodeIfPresent(Bool.self, forKey: .reworded) ?? reworded
+        custom = try values.decodeIfPresent(String.self, forKey: .custom) ?? custom
+        recordingMode = try values.decodeIfPresent(RecordingMode.self, forKey: .recordingMode) ?? recordingMode
+        keyCode = try values.decodeIfPresent(UInt32.self, forKey: .keyCode) ?? keyCode
+        keyModifiers = try values.decodeIfPresent(UInt32.self, forKey: .keyModifiers) ?? keyModifiers
+        shortcutLabel = try values.decodeIfPresent(String.self, forKey: .shortcutLabel) ?? shortcutLabel
+        speechModel = try values.decodeIfPresent(String.self, forKey: .speechModel) ?? speechModel
+        languageModel = try values.decodeIfPresent(String.self, forKey: .languageModel) ?? languageModel
+        saveHistory = try values.decodeIfPresent(Bool.self, forKey: .saveHistory) ?? saveHistory
+        showBar = try values.decodeIfPresent(Bool.self, forKey: .showBar) ?? showBar
+        barLayout = BarLayout(rawValue: try values.decodeIfPresent(String.self, forKey: .barLayout) ?? "") ?? .horizontal
+        translationLanguage = try values.decodeIfPresent(String.self, forKey: .translationLanguage) ?? translationLanguage
+    }
 }
 public struct HistoryEntry: Codable, Identifiable {
     public let id: UUID

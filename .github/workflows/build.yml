@@ -39,6 +39,9 @@ jobs:
       - name: Word guards and bounded repair tests
         shell: powershell
         run: ./windows/validation/RunCoreChecks.ps1
+      - name: Dictation bar, taskbar and settings tests
+        shell: powershell
+        run: ./windows/validation/RunBarChecks.ps1
       - name: Local Stream Deck bridge tests
         shell: powershell
         run: ./windows/validation/RunStreamDeckChecks.ps1

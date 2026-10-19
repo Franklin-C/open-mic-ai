@@ -24,6 +24,8 @@ public sealed class Settings {
     public bool SaveInsights=true;
     public List<AppStyle> AppStyles=new List<AppStyle>();
     public bool ShowBar=true,Sounds=false,MutePlayback=false;
+    public string BarLayout="Horizontal";
+    public bool TaskbarControl=false;
     public string HoldMouse="Off",Cleanup="Light";
     public string Speech="tdt-0.6b-v2-q8_0.gguf", Text="Qwen3-4B-Instruct-2507-Q3_K_S.gguf";
     public static Settings Load(string root) {
@@ -74,6 +76,8 @@ public sealed class FlowContext : ApplicationContext {
     ComputerSpecs specs;
     readonly ShortcutWindow shortcut=new ShortcutWindow();
     readonly Pill pill=new Pill();
+    TaskbarControl taskbar;
+    readonly System.Windows.Forms.Timer taskbarUpdate=new System.Windows.Forms.Timer {Interval=250};
     readonly NotifyIcon tray;
     readonly ToolStripMenuItem status=new ToolStripMenuItem("Loading local models…") {Enabled=false};
     readonly ToolStripMenuItem copyResult=new ToolStripMenuItem("Copy last result") {Enabled=false};
@@ -104,7 +108,7 @@ public sealed class FlowContext : ApplicationContext {
         shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;
         shortcut.Toggle=KeyboardToggle;shortcut.Released=KeyboardRelease;shortcut.Cancel=Cancel;pill.Cancel=Cancel;pill.CopyResult=Copy;pill.Release=()=>{if(selectionProbe!=null)pendingHoldReleased=true;if(session!=null&&!session.Stopped)Finish(session);};pill.RecordingMode=RecordingModes.Normalize(settings.RecordingMode);
         pill.TextAction=ChooseTextAction;pill.SpeakInstruction=SpeakInstruction;pill.TranslationLanguage=language=>{if(actionSession!=null&&!actionSession.Processing)actionSession.Language=language;};
-        if(settings.BarX!=int.MinValue&&settings.BarY!=int.MinValue)pill.SetPosition(new Point(settings.BarX,settings.BarY));pill.PositionChanged=point=>{settings.BarX=point.X;settings.BarY=point.Y;SavePreferences();};pill.Persistent=settings.ShowBar;pill.Start=Toggle;pill.History=ShowApp;pill.HideBar=()=>{settings.ShowBar=false;pill.Persistent=false;pill.Conceal();SavePreferences();};
+        if(settings.BarX!=int.MinValue&&settings.BarY!=int.MinValue)pill.SetPosition(new Point(settings.BarX,settings.BarY));pill.PositionChanged=point=>{settings.BarX=point.X;settings.BarY=point.Y;SavePreferences();};pill.Vertical=settings.BarLayout=="Vertical";pill.Persistent=settings.ShowBar;pill.Start=Toggle;pill.History=ShowApp;pill.HideBar=()=>{settings.ShowBar=false;pill.Persistent=false;pill.Conceal();SavePreferences();};
         ContextMenuStrip menu=new ContextMenuStrip();
         menu.Items.Add(status);menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Open app",null,(s,e)=>ShowApp());
@@ -130,6 +134,7 @@ public sealed class FlowContext : ApplicationContext {
         if(personalization.Error!=null)ui.Post(s=>Notify("Saved personalization could not be read. The original file has been preserved."),null);
         try{holdMouse.Configure(Hotkey.Mouse(settings.Shortcut)?settings.Shortcut:settings.HoldMouse);}catch(Exception error){ui.Post(s=>Notify(error.Message),null);}
         if(settings.ShowBar)pill.ShowIdle();
+        taskbarUpdate.Tick+=(s,e)=>{if(taskbar!=null)taskbar.UpdateState(pill,Busy,status.Text);};ConfigureTaskbar();
         level.Tick+=(s,e)=>{if(session!=null&&!session.Stopped){DictationSession current=session;bool speech;double duration,silence;current.Segments.Activity(out speech,out duration,out silence);if(RecordingModes.ShouldStop(current.RecordingMode,Math.Max(duration,current.RecordingTime.Elapsed.TotalSeconds),speech,silence)){Finish(current);return;}pill.Level=current.Segments.Level;pill.Invalidate();Preview(current);}};level.Start();
         health.Tick+=(s,e)=>{if(!exiting&&!booting&&!Busy&&models!=null&&models.Ready&&!models.Alive){SetStatus("Reloading local models");Boot();}};health.Start();
         Microsoft.Win32.SystemEvents.PowerModeChanged+=PowerChanged;
@@ -180,8 +185,13 @@ public sealed class FlowContext : ApplicationContext {
     bool Copy(string text){if(String.IsNullOrEmpty(text))return false;try{TextClipboard.SetText(text);return true;}catch(System.Runtime.InteropServices.ExternalException){if(pill.ResultReady){pill.Caption="Clipboard busy";pill.Invalidate();}else Notify("Clipboard busy. Try again.");return false;}}
     void SavePreferences(){try{settings.Save(root);}catch(Exception error){Notify("Could not save preferences: "+error.Message);}}
     void ConfigureStartup(){using(Microsoft.Win32.RegistryKey key=Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")){if(settings.LaunchAtLogin)key.SetValue("Open Mic AI","\""+Application.ExecutablePath+"\" --background");else key.DeleteValue("Open Mic AI",false);key.DeleteValue("LocalFlow",false);}}
-    void ApplySettings(Settings value){settings=value;shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;pill.RecordingMode=RecordingModes.Normalize(settings.RecordingMode);try{holdMouse.Configure(Hotkey.Mouse(settings.Shortcut)?settings.Shortcut:settings.HoldMouse);settings.Save(root);ConfigureStartup();}catch(Exception error){Notify("Could not apply settings: "+error.Message);}pill.Persistent=settings.ShowBar;if(!Busy){if(pill.Persistent)pill.ShowIdle();else pill.Conceal();}SetStatus(models!=null&&models.Alive?"Ready · "+settings.Shortcut:"Models not ready");}
-    void EnsureHub(){if(hub!=null&&!hub.IsDisposed)return;hub=new HubWindow(history,personalization,usage,()=>settings,ApplySettings,CreateModelWindow,shortcut.Choices,shortcut.EditLabel,importer);hub.FormClosed+=(s,e)=>hub=null;}
+    void ApplySettings(Settings value){settings=value;shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;pill.RecordingMode=RecordingModes.Normalize(settings.RecordingMode);try{holdMouse.Configure(Hotkey.Mouse(settings.Shortcut)?settings.Shortcut:settings.HoldMouse);settings.Save(root);ConfigureStartup();}catch(Exception error){Notify("Could not apply settings: "+error.Message);}pill.Vertical=settings.BarLayout=="Vertical";pill.Persistent=settings.ShowBar;ConfigureTaskbar();if(!Busy){if(pill.Persistent)pill.ShowIdle();else pill.Conceal();}SetStatus(models!=null&&models.Alive?"Ready · "+settings.Shortcut:"Models not ready");}
+    void ConfigureTaskbar(){
+        if(hub!=null&&!hub.IsDisposed)hub.ShowInTaskbar=!settings.TaskbarControl;
+        if(settings.TaskbarControl){if(taskbar==null){taskbar=new TaskbarControl();taskbar.Toggle=()=>{if(session!=null||selectionProbe!=null||actionSession!=null)Toggle();else if(CanDictate())Begin(false,null,null,"Click to start / stop");};taskbar.OpenApp=ShowApp;taskbar.CopyRecent=()=>Copy(pill.RecentText);taskbar.HideControl=()=>{settings.TaskbarControl=false;ConfigureTaskbar();SavePreferences();};taskbar.Show();}taskbar.UpdateState(pill,Busy,status.Text);taskbarUpdate.Start();}
+        else{taskbarUpdate.Stop();if(taskbar!=null){TaskbarControl old=taskbar;taskbar=null;old.Dispose();}}
+    }
+    void EnsureHub(){if(hub!=null&&!hub.IsDisposed)return;hub=new HubWindow(history,personalization,usage,()=>settings,ApplySettings,CreateModelWindow,shortcut.Choices,shortcut.EditLabel,importer);hub.ShowInTaskbar=!settings.TaskbarControl;hub.FormClosed+=(s,e)=>hub=null;}
     [System.Runtime.InteropServices.DllImport("user32.dll")]static extern bool ShowWindow(IntPtr window,int command);
     void ShowApp(){if(exiting)return;EnsureHub();hub.SetStatus(status.Text);hub.Show();if(hub.WindowState==FormWindowState.Minimized)hub.WindowState=FormWindowState.Normal;ShowWindow(hub.Handle,5);hub.BringToFront();hub.Activate();}
     void OpenHub(string page){if(exiting)return;if(Busy){Notify("Finish or cancel the current action first.");return;}EnsureHub();hub.Navigate(page);ShowApp();}
@@ -314,7 +324,7 @@ public sealed class FlowContext : ApplicationContext {
     }
     [System.Runtime.InteropServices.DllImport("user32.dll",EntryPoint="GetClipboardSequenceNumber")]static extern int ClipboardSequence();
     void Cancel(){bool probing=selectionProbe!=null;if(probing)selectionProbe.Cancel();TextActionSession action=actionSession;if(action!=null){actionSession=null;action.Cancel.Cancel();if(!action.Processing)action.Dispose();}DictationSession current=session;if(current!=null){current.Cancel.Cancel();current.Stop();session=null;}if(action==null&&current==null&&!probing)return;shortcut.ListenForEscape(false);pill.Conceal();SetStatus("Ready · "+settings.Shortcut);}
-    protected override void ExitThreadCore(){exiting=true;if(streamDeck!=null)streamDeck.Dispose();importer.Cancel();if(reopenWait!=null)reopenWait.Unregister(null);pill.Persistent=false;Cancel();holdMouse.Dispose();if(hub!=null)hub.Close();history.FlushAsync().GetAwaiter().GetResult();personalization.FlushAsync().GetAwaiter().GetResult();usage.FlushAsync().GetAwaiter().GetResult();level.Dispose();health.Dispose();Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;shortcut.Dispose();pill.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();if(models!=null)models.Dispose();base.ExitThreadCore();}
+    protected override void ExitThreadCore(){exiting=true;taskbarUpdate.Dispose();if(taskbar!=null)taskbar.Dispose();if(streamDeck!=null)streamDeck.Dispose();importer.Cancel();if(reopenWait!=null)reopenWait.Unregister(null);pill.Persistent=false;Cancel();holdMouse.Dispose();if(hub!=null)hub.Close();history.FlushAsync().GetAwaiter().GetResult();personalization.FlushAsync().GetAwaiter().GetResult();usage.FlushAsync().GetAwaiter().GetResult();level.Dispose();health.Dispose();Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;shortcut.Dispose();pill.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();if(models!=null)models.Dispose();base.ExitThreadCore();}
 }
 
 public static class Program {
