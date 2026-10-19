@@ -14,7 +14,7 @@
       "outline-regression-cases": 4,
       "dictation-bar-checks": 44,
       "mouse-shortcut-checks": 53,
-      "statistics-and-taskbar-command-checks": 53
+      "statistics-and-taskbar-command-checks": 68
     },
     "ai_tokens": {
       "live_reported_completion_responses": 6,
@@ -30,7 +30,9 @@
     "dictation_bar_scope": "3.9.0: isolated UI fixtures verify preference migration, six settings tabs, immediate bar controls, horizontal and vertical hit areas, hold release, readable recording cards and paste dismissal. Native Explorer accepted all three thumbnail controls; registration and command dispatch retain editor focus. DWM configuration and bounded bitmap API calls pass. Preview screenshots use synthetic text and render the app-provided content; no physical microphone or real Explorer flyout capture is claimed.",
     "settings_and_mouse_scope": "3.10.0: four settings groups with nested writing libraries, shortcuts/bar and general/models pages. Isolated Windows native mouse packets verify middle/side capture with the pointer away from the picker, consumed press and release, no unintended recording or click-through, and side-button hold/release callbacks. Picker cancellation, stale callback cleanup, keyboard capture and automatic hold-mode selection are checked. Screenshots use synthetic data. Mac mouse state and preferences are covered by Swift tests; real-device Mac permission, microphone and paste checks remain.",
     "stats_scope": "3.11.0: synthetic aggregate fixtures verify date boundaries, equal-length comparisons, weighted speaking speed, eligible fastest records, time-saved estimates, local-time buckets, token attribution, streaks, migration, privacy, reset and persistence. UI fixtures verify date filters, keyboard-readable charts and Stats below History. Native shell tests use an isolated Jump List identity, verify fixed command links, publish/clear tasks and deliver each IPC command. No transcripts or real usage are published.",
-    "taskbar_settings_scope": "3.11.0: Taskbar has its own Access subpage with independently persisted live words, status indicator, quick buttons and app-owned right-click actions. Hidden buttons cannot dispatch. Explorer accepts native toolbar and DWM calls; restore dispatches Open app. Windows-owned Pin/Close remain Windows-controlled. Screenshots are app-rendered synthetic fixtures, not a captured Explorer flyout."
+    "taskbar_settings_scope": "3.11.0: Taskbar has its own Access subpage with independently persisted live words, status indicator, quick buttons and app-owned right-click actions. Hidden buttons cannot dispatch. Explorer accepts native toolbar and DWM calls; restore dispatches Open app. Windows-owned Pin/Close remain Windows-controlled. Screenshots are app-rendered synthetic fixtures, not a captured Explorer flyout. Follow-up: the tray menu uses the same selected commands, removes legacy extras, updates enabled states and Stop recording, and opens the app on a single left click. Native isolated editor/popup tests verify original-field focus restoration and closed-window rejection for tray Dictate. Fixture FlowContext instances use isolated Stream Deck connection files.",
+    "history_checks_last_full_pass_version": "3.10.0",
+    "history_checks_current_attempt": "3.11.0: all new navigation and settings checks passed. The full live-desktop suite did not complete; foreground-sensitive assertions failed while other desktop applications were active. Targeted core, Stats, tray/taskbar, mouse and Stream Deck checks passed separately."
   },
   "streamdeck": {
     "version": "1.0.1",
@@ -39,6 +41,7 @@
   "macos": {
     "scope": "Native builds, Swift formatting/personalization/token and media-decoder tests, package resources and engine executable checks. Real-device microphone and paste testing remains. Windows model results are not Mac speech-engine measurements. 3.11.0 adds aggregate statistics and Swift tests for period filters, weighted speed, duration handling, local-time/DST streaks, tokens, old-history seeding and preference migration.",
     "status": "Preview",
-    "build_workflow": "https://github.com/Franklin-C/open-mic-ai/actions/workflows/build.yml"
+    "build_workflow": "https://github.com/Franklin-C/open-mic-ai/actions/workflows/build.yml",
+    "tests_per_architecture": 35
   }
 }

@@ -20,9 +20,9 @@ Hover over the Open Mic AI taskbar entry to see recognized words and three contr
 - **Copy recent** copies the latest result.
 - **Open app** opens the main window.
 
-Click the taskbar icon to open the app. Independently toggle **Live words**, the **Recording indicator**, and **Quick buttons**. Recording buttons keep the editor focused so automatic paste can use the original text box. Closing the taskbar entry turns this option off; the app stays available in the tray.
+Click the taskbar icon or single-click the tray icon to open the app. Independently toggle **Live words**, the **Recording indicator**, and **Quick buttons**. Recording buttons keep the editor focused so automatic paste can use the original text box. Closing the taskbar entry turns this option off; the app stays available in the tray.
 
-Under **Right-click shortcuts**, choose which app actions appear in the Windows Jump List: Dictate / Stop, Copy recent, Open app, Show dictation bar, Settings, and Quit. Changes save immediately. Windows manages its own Pin and Close entries. Quit closes the app, just like Quit in the tray.
+Under **Right-click menu**, choose the app actions shown by both the tray icon and the Windows Jump List: Dictate / Stop, Copy recent, Open app, Show dictation bar, Settings, and Quit. Changes save immediately. The tray keeps an informational status line; other legacy tray entries are removed. Windows manages its own Pin and Close entries. Quit closes the app, just like Quit in the tray.
 
 ![Taskbar settings](images/taskbar-settings.png)
 
