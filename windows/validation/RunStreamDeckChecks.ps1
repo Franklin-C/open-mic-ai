@@ -10,7 +10,7 @@ $sources=@(Get-ChildItem -LiteralPath (Join-Path $appRoot 'src') -Filter '*.cs' 
 try {
     & $compiler @arguments @sources (Join-Path $PSScriptRoot 'StreamDeckChecks.cs')
     if($LASTEXITCODE-ne 0){throw 'Stream Deck test compilation failed'}
-    & $testExe $fixture
+    & $testExe $fixture (Join-Path $appRoot 'assets/OpenMicAI.streamDeckPlugin')
     if($LASTEXITCODE-ne 0){throw 'Stream Deck tests failed'}
 } finally {
     $resolved=[IO.Path]::GetFullPath($fixture)

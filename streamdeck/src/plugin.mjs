@@ -24,7 +24,7 @@ async function paint() {
   }
 }
 async function poll() {
-  if (polling || !streamDeck.actions.length) return;
+  if (polling) return;
   polling = true;
   try { state = await request(); } catch { state = undefined; }
   try { await paint(); } catch { /* A profile may disappear during the update. */ }

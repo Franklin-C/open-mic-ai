@@ -2,7 +2,7 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "UUID": "com.openmicai.controls",
   "Name": "Open Mic AI",
-  "Version": "1.0.0.0",
+  "Version": "1.0.1.0",
   "Author": "Open Mic AI",
   "Description": "Local dictation and spoken AI edits from your Stream Deck.",
   "URL": "https://github.com/Franklin-C/open-mic-ai",

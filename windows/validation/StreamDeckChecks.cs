@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
 using System.Collections.Generic;
+using System.IO.Compression;
 using LocalFlow;
 
 public static class StreamDeckChecks {
@@ -24,6 +25,12 @@ public static class StreamDeckChecks {
             Check(commands==6,"Unauthorized requests cannot trigger actions");
         }
         Dictionary<string,object> closed=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(Path.Combine(folder,"streamdeck.json")));Check(Convert.ToInt32(closed["port"])==0,"Shutdown marks connection offline");
+        string plugins=Path.Combine(folder,"Plugins");Directory.CreateDirectory(plugins);string sibling=Path.Combine(plugins,"unrelated.sdPlugin");Directory.CreateDirectory(sibling);File.WriteAllText(Path.Combine(sibling,"keep.txt"),"untouched");
+        using(FileStream package=File.OpenRead(args[1]))StreamDeckPackage.Install(package,plugins);
+        string target=Path.Combine(plugins,StreamDeckIntegration.PluginId+".sdPlugin");Check(File.Exists(Path.Combine(target,"bin","plugin.mjs")),"Installer writes the plugin into Stream Deck's plugin directory");
+        using(FileStream package=File.OpenRead(args[1]))StreamDeckPackage.Install(package,plugins);
+        Check(File.ReadAllText(Path.Combine(sibling,"keep.txt"))=="untouched","Install and update preserve other plugins");
+        foreach(string bad in new[]{"com.openmicai.controls.sdPlugin/../../escape.txt","other.sdPlugin/manifest.json"}){using(MemoryStream data=new MemoryStream()){using(ZipArchive zip=new ZipArchive(data,ZipArchiveMode.Create,true)){using(StreamWriter writer=new StreamWriter(zip.CreateEntry(bad).Open()))writer.Write("bad");}data.Position=0;bool rejected=false;try{StreamDeckPackage.Install(data,plugins);}catch(InvalidDataException){rejected=true;}Check(rejected&&File.Exists(Path.Combine(target,"manifest.json")),"Reject unsafe package without replacing the installed plugin");}}
         Console.WriteLine(checks+" Stream Deck checks passed");
     }finally{if(folder.StartsWith(Path.GetFullPath(args[0])+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))Directory.Delete(folder,true);}}
 }

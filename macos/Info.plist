@@ -7,8 +7,8 @@
 <key>CFBundleExecutable</key><string>OpenMicAI</string>
 <key>CFBundleIconFile</key><string>OpenMicAI.icns</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>3.8.0</string>
-<key>CFBundleVersion</key><string>380</string>
+<key>CFBundleShortVersionString</key><string>3.8.1</string>
+<key>CFBundleVersion</key><string>381</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSMicrophoneUsageDescription</key><string>Open Mic AI records speech for transcription on this Mac. Audio is not saved.</string>
 <key>NSHighResolutionCapable</key><true/>

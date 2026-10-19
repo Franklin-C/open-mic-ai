@@ -150,7 +150,7 @@ public sealed class FlowContext : ApplicationContext {
             if(Busy||booting||models==null||!models.Alive)return new {ok=false,error="Not ready"};
             streamDeckHolding=true;Begin(false,null,null,"Hold to talk");
         }else if(action=="hold.up"&&streamDeckHolding){streamDeckHolding=false;if(selectionProbe!=null)pendingHoldReleased=true;if(session!=null&&!session.Stopped)Finish(session);}
-        return new {ok=true,ready=models!=null&&models.Alive&&!booting,phase=session!=null&&!session.Stopped?"recording":Busy?"processing":"idle",hasRecent=!String.IsNullOrWhiteSpace(pill.RecentText)};
+        return new {ok=true,ready=models!=null&&models.Alive&&!booting,phase=session!=null&&!session.Stopped?"recording":Busy?"processing":"idle",hasRecent=!String.IsNullOrWhiteSpace(pill.RecentText),pluginConnected=StreamDeckIntegration.Connected};
     }
     async void Boot(){await BootModels();}
     async Task BootModels() {

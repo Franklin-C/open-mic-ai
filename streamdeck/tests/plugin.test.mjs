@@ -13,9 +13,11 @@ test('packaged plugin registers and controls a local app through real SDK events
   const config = join(fixture, 'OpenMicAI', 'streamdeck.json');
   await mkdir(join(fixture, 'OpenMicAI'));
   const token = 'a'.repeat(64), calls = [], messages = [];
-  let phase = 'idle', child, socket;
+  let phase = 'idle', child, socket, statusRequests = 0;
   const http = createServer(async (req, res) => {
     assert.equal(req.headers.authorization, `Bearer ${token}`);
+    assert.equal(req.headers['x-openmic-client'], 'StreamDeck');
+    if (req.method === 'GET') statusRequests++;
     if (req.method === 'POST') {
       let raw = ''; for await (const part of req) raw += part;
       const { command } = JSON.parse(raw); calls.push(command);
@@ -41,6 +43,8 @@ test('packaged plugin registers and controls a local app through real SDK events
     if (process.platform !== 'win32') { const dir = join(fixture, 'Library', 'Application Support', 'Open Mic AI'); await mkdir(dir, { recursive: true }); await writeFile(join(dir, 'streamdeck.json'), JSON.stringify({ port: http.address().port, token, application: '/Applications/Open Mic AI.app' })); }
     let stderr = ''; child.stderr.on('data', data => { stderr += data; });
     await waitFor(() => messages.some(x => x.event === 'registerPlugin'));
+    const beforeAppear = statusRequests;
+    await waitFor(() => statusRequests > beforeAppear);
     const send = (event, kind) => socket.send(JSON.stringify({ event, action: `com.openmicai.controls.${kind}`, context: kind, device: 'deck', payload: { settings: {}, controller: 'Keypad', state: 0, isInMultiAction: false, coordinates: { column: 0, row: 0 } } }));
     for (const kind of ['dictate', 'hold', 'copy', 'open', 'cancel']) send('willAppear', kind);
     await waitFor(() => messages.some(x => x.event === 'setTitle' && x.payload.title === 'Dictate'));

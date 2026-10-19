@@ -1,7 +1,9 @@
 # Stream Deck
 
-In Open Mic AI 3.8 or later, open **Settings → System → Stream Deck → Install plugin**.
-Confirm installation in Stream Deck, then drag an **Open Mic AI** action onto a key.
+In Open Mic AI 3.8.1 or later, open **Settings → System → Stream Deck → Install plugin**.
+On Windows, this installs the bundled files and briefly restarts Stream Deck.
+The button reports when the plugin is installed and connected. Then drag an
+**Open Mic AI** action onto a key. On Mac, confirm installation in Stream Deck.
 The installer is included in the app; no extra download or pairing code is needed.
 
 ![Stream Deck installer in Settings](images/streamdeck-settings.png)
@@ -29,7 +31,7 @@ wait for models to load, then press Dictate again. **Open app** opens it directl
 
 If the actions do not appear, update Stream Deck and use **Install plugin** again.
 The standalone installer is also available in the GitHub release downloads.
-Stream Deck manages the installation confirmation and key assignment.
+Stream Deck manages key assignment. Windows does not require developer mode.
 
 ## For contributors
 

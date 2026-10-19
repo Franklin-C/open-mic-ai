@@ -17,7 +17,7 @@ export async function request(command = 'status', options = {}) {
   if (!value.port) throw new Error('Open Mic AI is closed');
   const response = await fetch(`http://127.0.0.1:${value.port}/${command === 'status' ? 'status' : 'command'}`, {
     method: command === 'status' ? 'GET' : 'POST',
-    headers: { Authorization: `Bearer ${value.token}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${value.token}`, 'Content-Type': 'application/json', 'X-OpenMic-Client': 'StreamDeck' },
     ...(command === 'status' ? {} : { body: JSON.stringify({ command }) }),
     signal: AbortSignal.timeout(options.timeout || 1200), redirect: 'error'
   });
