@@ -8,7 +8,7 @@ import OpenMicCore
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack { Image(systemName: "mic.fill").font(.title).foregroundStyle(.red); Text("Open Mic AI").font(.title3.bold()) }.padding(.bottom, 28)
-                ForEach([("Home", "house"), ("History", "clock"), ("Snippets", "scissors"), ("Vocabulary", "text.book.closed"), ("Settings", "gearshape")], id: \.0) { name, icon in
+                ForEach([("Home", "house"), ("History", "clock"), ("Settings", "gearshape")], id: \.0) { name, icon in
                     Button { state.page = name } label: {
                         Label(name, systemImage: icon).frame(maxWidth: .infinity, alignment: .leading).padding(12)
                             .foregroundStyle(state.page == name ? Color.red : Color.primary)
@@ -24,8 +24,6 @@ import OpenMicCore
                 switch state.page {
                 case "Home": HomeView(state: state)
                 case "History": HistoryView(state: state)
-                case "Snippets": SnippetsView(state: state)
-                case "Vocabulary": VocabularyView(state: state)
                 default: SettingsView(state: state)
                 }
                 if !state.message.isEmpty { HStack { Text(state.message).font(.caption).foregroundStyle(.secondary); Spacer(); Button("Dismiss") { state.message = "" } }.padding(.top, 8) }
@@ -178,22 +176,30 @@ struct ActivityView: View {
 }
 @MainActor struct SettingsView: View {
     @ObservedObject var state: AppState
+    var group: String { SettingsNavigation.group(for: state.section) }
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Picker("", selection: $state.section) { ForEach(["Style", "Models", "Shortcuts", "Dictation bar", "Integrations", "System"], id: \.self) { Text($0) } }.pickerStyle(.segmented).labelsHidden()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    switch state.section {
-                    case "Style": style
-                    case "Models": models
-                    case "Shortcuts": shortcuts
-                    case "Dictation bar": dictationBar
-                    case "Integrations": integrations
-                    default: system
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 18) {
+            Picker("Settings", selection: Binding(get: { group }, set: { state.section = SettingsNavigation.pages($0).first ?? "Integrations" })) { ForEach(SettingsNavigation.groups, id: \.self) { Text($0) } }.pickerStyle(.segmented).labelsHidden()
+            if !SettingsNavigation.pages(group).isEmpty {
+                Picker("Section", selection: $state.section) { ForEach(SettingsNavigation.pages(group), id: \.self) { Text($0) } }.pickerStyle(.segmented).labelsHidden()
             }
-        }.onDisappear { state.cancelShortcut() }
+            if state.section == "Snippets" { SnippetsView(state: state) }
+            else if state.section == "Vocabulary" { VocabularyView(state: state) }
+            else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        switch state.section {
+                        case "Style": style
+                        case "Models": models
+                        case "Shortcuts": shortcuts
+                        case "Dictation bar": dictationBar
+                        case "Integrations": integrations
+                        default: system
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }.onDisappear { state.cancelShortcut() }.onChange(of: state.section) { _ in state.cancelShortcut() }
     }
     var style: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -224,8 +230,9 @@ struct ActivityView: View {
     var shortcuts: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("One shortcut").font(.headline)
-            Button(state.capturingShortcut ? "Press your shortcut… (Esc cancels)" : state.preferences.shortcutLabel) { state.recordShortcut() }
-            Text("Dictate in a text box. Select text to choose an AI action.").font(.caption).foregroundStyle(.secondary)
+            Button(state.capturingShortcut ? "Press keys or middle/side mouse · Esc cancels" : state.preferences.shortcutLabel) { state.recordShortcut() }
+            Text("Programmable mouse buttons").font(.headline)
+            Text("Hold a side button to dictate; release to insert text.").font(.caption).foregroundStyle(.secondary)
             Picker("Recording mode", selection: $state.preferences.recordingMode) { ForEach(RecordingMode.allCases, id: \.self) { Text($0.rawValue) } }.onChange(of: state.preferences.recordingMode) { _ in state.save() }
             TextField("Translation language", text: $state.preferences.translationLanguage).textFieldStyle(.roundedBorder)
             Button("Save") { state.save() }
@@ -234,18 +241,21 @@ struct ActivityView: View {
         }
     }
     var dictationBar: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Toggle("Show dictation bar", isOn: $state.preferences.showBar).onChange(of: state.preferences.showBar) { _ in state.save() }
-            Text("Keep the bar visible between recordings.").font(.caption).foregroundStyle(.secondary)
-            Text("Layout").font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Floating bar").font(.headline)
+            HStack {
+                VStack(alignment: .leading, spacing: 5) { Text("Show dictation bar").font(.system(size: 14, weight: .semibold)); Text("Keep it visible between recordings").font(.caption).foregroundStyle(.secondary) }
+                Spacer()
+                Toggle("Show dictation bar", isOn: $state.preferences.showBar).labelsHidden().toggleStyle(.switch).onChange(of: state.preferences.showBar) { _ in state.save() }
+            }.padding(18).background(.white, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.15)))
             HStack(spacing: 12) {
                 ForEach(BarLayout.allCases, id: \.self) { layout in
                     Button { state.preferences.barLayout = layout; state.save() } label: {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 12) {
                             HStack { Text(layout.rawValue).font(.headline); Spacer(); Image(systemName: state.preferences.barLayout == layout ? "checkmark.circle.fill" : "circle").foregroundStyle(.red) }
-                            Text(layout == .horizontal ? "Compact toolbar" : "Stacked controls").font(.caption).foregroundStyle(.secondary)
-                        }.padding(18).frame(maxWidth: .infinity, alignment: .leading).background(state.preferences.barLayout == layout ? Color.red.opacity(0.05) : .white, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(state.preferences.barLayout == layout ? Color.red : Color.gray.opacity(0.2)))
-                    }.buttonStyle(.plain)
+                            BarLayoutPreview(vertical: layout == .vertical).frame(maxWidth: .infinity).frame(height: 112).accessibilityHidden(true)
+                        }.padding(18).frame(maxWidth: .infinity, alignment: .leading).background(state.preferences.barLayout == layout ? Color.red.opacity(0.035) : .white, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(state.preferences.barLayout == layout ? Color.red : Color.gray.opacity(0.15), lineWidth: state.preferences.barLayout == layout ? 2 : 1))
+                    }.buttonStyle(.plain).accessibilityAddTraits(state.preferences.barLayout == layout ? .isSelected : [])
                 }
             }
         }
@@ -343,5 +353,19 @@ private struct FloatingAppLogo: View {
                 Image(nsImage: image).resizable().scaledToFit()
             } else { Image(systemName: "mic.fill").foregroundStyle(.red) }
         }.frame(width: 22, height: 22).padding(3)
+    }
+}
+
+private struct BarLayoutPreview: View {
+    let vertical: Bool
+    var body: some View {
+        let layout = vertical ? AnyLayout(VStackLayout(spacing: 7)) : AnyLayout(HStackLayout(spacing: 12))
+        layout {
+            Image(systemName: vertical ? "ellipsis" : "ellipsis.vertical").foregroundStyle(.gray).font(.system(size: 9))
+            HStack(spacing: 5) { Image(systemName: "mic"); if !vertical { Text("Dictate").fontWeight(.semibold) } }
+            Image(systemName: "doc.on.doc")
+            Image(systemName: "mic.fill").foregroundStyle(.red)
+            Image(systemName: "xmark").font(.system(size: 8)).foregroundStyle(.secondary)
+        }.font(.system(size: 11)).foregroundStyle(.black).padding(vertical ? 10 : 12).background(.white, in: RoundedRectangle(cornerRadius: 9)).overlay(RoundedRectangle(cornerRadius: 9).stroke(Color.gray.opacity(0.2)))
     }
 }

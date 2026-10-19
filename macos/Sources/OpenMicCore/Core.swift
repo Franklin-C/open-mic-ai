@@ -6,10 +6,45 @@ public enum WritingStyle: String, CaseIterable, Codable {
 public enum RecordingMode: String, CaseIterable, Codable {
     case toggle = "Click to start / stop", hold = "Hold to talk", automatic = "Automatic"
 }
+public enum SettingsNavigation {
+    public static let groups = ["Writing", "Access", "System", "Integrations"]
+    public static func pages(_ group: String) -> [String] {
+        switch group { case "Writing": return ["Style", "Snippets", "Vocabulary"]; case "Access": return ["Shortcuts", "Dictation bar"]; case "System": return ["General", "Models"]; default: return [] }
+    }
+    public static func group(for section: String) -> String { groups.first { pages($0).contains(section) } ?? (section == "Integrations" ? "Integrations" : section == "System" ? "System" : "Writing") }
+}
 public enum BarLayout: String, CaseIterable, Codable {
     case horizontal = "Horizontal", vertical = "Vertical"
     public var idleWidth: Double { self == .vertical ? 44 : 204 }
     public var idleHeight: Double { self == .vertical ? 166 : 46 }
+}
+public enum MouseShortcut: Int, CaseIterable, Codable {
+    case middle = 2, back = 3, forward = 4
+    public var label: String { self == .middle ? "Middle mouse" : self == .back ? "Mouse 4" : "Mouse 5" }
+}
+public struct MouseShortcutState {
+    public enum Action: Equatable { case pass, consumed, pressed, released, captured(Int) }
+    public var selected: Int?
+    public var capturing: Bool
+    private var held: Int?
+    public init(selected: Int? = nil, capturing: Bool = false) { self.selected = selected; self.capturing = capturing }
+    public mutating func process(button: Int, down: Bool, enabled: Bool = true) -> Action {
+        guard MouseShortcut(rawValue: button) != nil else { return .pass }
+        if capturing {
+            if down && held == nil { held = button }
+            guard held == button else { return .pass }
+            if !down { held = nil; capturing = false; return .captured(button) }
+            return .consumed
+        }
+        guard selected == button else { return .pass }
+        if down {
+            if held == button { return .consumed }
+            guard enabled else { return .pass }
+            held = button; return .pressed
+        }
+        if held == button { held = nil; return .released }
+        return .pass
+    }
 }
 public struct Preferences: Codable {
     public var style: WritingStyle = .polish
@@ -19,6 +54,7 @@ public struct Preferences: Codable {
     public var keyCode: UInt32 = 49
     public var keyModifiers: UInt32 = 4608 // Carbon controlKey (4096) | shiftKey (512)
     public var shortcutLabel = "Control + Shift + Space"
+    public var mouseButton: Int?
     public var speechModel = "ggml-small.en.bin"
     public var languageModel = "Qwen3-4B-Instruct-2507-Q3_K_S.gguf"
     public var saveHistory = true
@@ -27,7 +63,7 @@ public struct Preferences: Codable {
     public var translationLanguage = "French"
     public init() {}
     enum CodingKeys: String, CodingKey {
-        case style, reworded, custom, recordingMode, keyCode, keyModifiers, shortcutLabel, speechModel, languageModel, saveHistory, showBar, barLayout, translationLanguage
+        case style, reworded, custom, recordingMode, keyCode, keyModifiers, shortcutLabel, mouseButton, speechModel, languageModel, saveHistory, showBar, barLayout, translationLanguage
     }
     public init(from decoder: Decoder) throws {
         self.init()
@@ -39,6 +75,7 @@ public struct Preferences: Codable {
         keyCode = try values.decodeIfPresent(UInt32.self, forKey: .keyCode) ?? keyCode
         keyModifiers = try values.decodeIfPresent(UInt32.self, forKey: .keyModifiers) ?? keyModifiers
         shortcutLabel = try values.decodeIfPresent(String.self, forKey: .shortcutLabel) ?? shortcutLabel
+        if let button = try values.decodeIfPresent(Int.self, forKey: .mouseButton), MouseShortcut(rawValue: button) != nil { mouseButton = button }
         speechModel = try values.decodeIfPresent(String.self, forKey: .speechModel) ?? speechModel
         languageModel = try values.decodeIfPresent(String.self, forKey: .languageModel) ?? languageModel
         saveHistory = try values.decodeIfPresent(Bool.self, forKey: .saveHistory) ?? saveHistory

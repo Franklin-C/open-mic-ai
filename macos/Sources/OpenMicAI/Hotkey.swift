@@ -1,12 +1,14 @@
 import AppKit
 import Carbon
+import OpenMicCore
 
 @MainActor final class Hotkey {
     private var reference: EventHotKeyRef?
     private var handler: EventHandlerRef?
     var pressed: () -> Void = {}
     var released: () -> Void = {}
-    var capturing = false
+    private var mouseInput: MouseShortcutInput?
+    var capturing = false { didSet { mouseInput?.enabled = !capturing } }
     init() {
         var events = [EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)), EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased))]
         let pointer = Unmanaged.passUnretained(self).toOpaque()
@@ -23,7 +25,15 @@ import Carbon
         var next: EventHotKeyRef?
         if reference != nil { UnregisterEventHotKey(reference!); reference = nil }
         guard RegisterEventHotKey(code, modifiers, identifier, GetApplicationEventTarget(), 0, &next) == noErr else { throw MicError.message("That shortcut is unavailable. Choose another combination.") }
-        reference = next
+        reference = next; mouseInput?.stop(); mouseInput = nil
     }
-    deinit { if let reference { UnregisterEventHotKey(reference) }; if let handler { RemoveEventHandler(handler) } }
+    func registerMouse(button: Int) throws {
+        guard MouseShortcut(rawValue: button) != nil else { throw MicError.message("Choose a middle or side mouse button.") }
+        let next = try MouseShortcutInput(button: button, pressed: { [weak self] in if let self, !self.capturing { self.pressed() } }, released: { [weak self] in if let self, !self.capturing { self.released() } })
+        next.enabled = !capturing
+        if let reference { UnregisterEventHotKey(reference) }; reference = nil
+        mouseInput?.stop(); mouseInput = next
+    }
+    func stop() { mouseInput?.stop(); mouseInput = nil; if let reference { UnregisterEventHotKey(reference) }; reference = nil }
+    deinit { mouseInput?.stop(); if let reference { UnregisterEventHotKey(reference) }; if let handler { RemoveEventHandler(handler) } }
 }

@@ -1,5 +1,5 @@
 {
-  "version": "3.9.0",
+  "version": "3.10.0",
   "windows": {
     "complete": true,
     "scope": "Synthetic transcribed text with resident Qwen3-4B-Instruct-2507-Q3_K_S, isolated native UI/paste fixtures and offline guards. All 19 automatic layouts: three dictated examples each, 19 selected rewrites, eight ordinary messages, and vocabulary/snippets in all four styles. Additional checks exercise the spoken rewrite entry point and repaired table/outline renderers. Counts overlap; these are not speech-accuracy measurements or results for every model. No user history is published.",
@@ -12,7 +12,8 @@
       "spoken-selected-layout-cases": 19,
       "table-regression-cases": 4,
       "outline-regression-cases": 4,
-      "dictation-bar-checks": 31
+      "dictation-bar-checks": 39,
+      "mouse-shortcut-checks": 53
     },
     "ai_tokens": {
       "live_reported_completion_responses": 6,
@@ -25,7 +26,8 @@
     "native_ui_capture_version": "3.7.1",
     "floating_visual_checks": "3.7.4: isolated render and click checks at 204x38 for standard copy icon, app logo and white Dictate button with black text. Dictate, copy and Open app each use a pale rose background and fine border on hover; Dictate has a slightly deeper pressed tint. Idle, each hover, pressed and result-copy states visually inspected. Actions remain independent, including hold-to-talk.",
     "focus_and_bar_checks": "3.7.1: native editor HWND stability, stable editor identity and bounds, changed-field rejection, automatic card dismissal, independent copy-recent and Open app icons, hold-to-talk separation and 204x38 compact bar. Editor identity refresh is simulated in native fixtures; browser-specific real-device behavior is not exhaustively tested.",
-    "dictation_bar_scope": "3.9.0: isolated UI fixtures verify preference migration, six settings tabs, immediate bar controls, horizontal and vertical hit areas, hold release, readable recording cards and paste dismissal. Native Explorer accepted all three thumbnail controls; registration and command dispatch retain editor focus. DWM configuration and bounded bitmap API calls pass. Preview screenshots use synthetic text and render the app-provided content; no physical microphone or real Explorer flyout capture is claimed."
+    "dictation_bar_scope": "3.9.0: isolated UI fixtures verify preference migration, six settings tabs, immediate bar controls, horizontal and vertical hit areas, hold release, readable recording cards and paste dismissal. Native Explorer accepted all three thumbnail controls; registration and command dispatch retain editor focus. DWM configuration and bounded bitmap API calls pass. Preview screenshots use synthetic text and render the app-provided content; no physical microphone or real Explorer flyout capture is claimed.",
+    "settings_and_mouse_scope": "3.10.0: four settings groups with nested writing libraries, shortcuts/bar and general/models pages. Isolated Windows native mouse packets verify middle/side capture with the pointer away from the picker, consumed press and release, no unintended recording or click-through, and side-button hold/release callbacks. Picker cancellation, stale callback cleanup, keyboard capture and automatic hold-mode selection are checked. Screenshots use synthetic data. Mac mouse state and preferences are covered by Swift tests; real-device Mac permission, microphone and paste checks remain."
   },
   "streamdeck": {
     "version": "1.0.1",

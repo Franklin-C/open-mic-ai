@@ -1,6 +1,6 @@
 # Dictation bar
 
-Open **Settings → Dictation bar**. Changes save immediately.
+Open **Settings → Access → Dictation bar**. Changes save immediately.
 
 - **Show dictation bar** keeps it visible between recordings. Listening, selected-text tools, and AI results still appear when needed.
 - **Horizontal** uses the compact toolbar. **Vertical** stacks the same controls in a narrow bar.

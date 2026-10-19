@@ -2,7 +2,7 @@
 
 Download **OpenMicAI-Portable.exe** from Releases and keep it in a writable folder.
 It extracts its inference engines into `OpenMicAI-data` beside the executable.
-Models download separately inside **Settings → Models**. Copy both the EXE and
+Models download separately inside **Settings → System → Models**. Copy both the EXE and
 its data folder to keep your models and preferences when moving it.
 
 The default model pair is **Parakeet TDT 0.6B v2 Q8** for English speech and
@@ -22,7 +22,7 @@ For editors such as Google Docs, selection capture can use Ctrl+C when Windows
 accessibility does not expose the highlight. The original clipboard formats are
 restored. The selection is checked again before a rewrite can replace it.
 
-In **Settings → Shortcuts**, click the shortcut button and press your preferred
+In **Settings → Access → Shortcuts**, click the shortcut button and press your preferred
 keys or a side mouse button. Choose click-to-toggle, hold-to-talk, or automatic
 stopping after a pause. **Escape** cancels.
 
@@ -35,7 +35,7 @@ or when an action such as translation or summary needs its own result.
 ## Style and history
 
 Choose **Raw transcript**, **Clean up**, **Polish**, or **Custom** under
-**Settings → Style**. Polish rewrites and chooses a layout automatically using
+**Settings → Writing → Style**. Polish rewrites and chooses a layout automatically using
 your loaded local LLM. It supports 19 purposes, including sentences, tables,
 recipes, FAQs, outlines and meeting notes. Ordinary messages stay prose; no
 format picker is needed. A local meaning check checks supplied facts and context.

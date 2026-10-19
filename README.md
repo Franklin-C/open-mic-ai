@@ -36,7 +36,7 @@ yet have every Windows feature.
 ## Start speaking
 
 1. Download your platform's app from [Releases](https://github.com/Franklin-C/open-mic-ai/releases).
-2. Open **Settings → Models**, choose speech and language models, and click **Download & load models**.
+2. Open **Settings → System → Models**, choose speech and language models, and click **Download & load models**.
 3. Wait for **Ready**, click a text box, and press **Ctrl + Shift + Space** (Mac: **Control + Shift + Space**).
 4. Speak. Press again to finish, or choose hold-to-talk or automatic stopping.
 
@@ -45,7 +45,7 @@ model downloads; dictation and editing run locally afterward. The app downloads
 weights separately so the executable stays small. Download sizes are shown in the
 model selectors.
 
-**Dictation bar:** choose **Settings → Dictation bar** to keep it visible and
+**Dictation bar:** choose **Settings → Access → Dictation bar** to keep it visible and
 switch between horizontal and vertical controls. Recording and AI cards expand
 when needed. On Windows, you can also enable a taskbar control: hover to see live
 words, stop recording, copy the latest result, or open the app. [Bar settings and previews](docs/dictation-bar.md).
@@ -54,6 +54,13 @@ words, stop recording, copy the latest result, or open the app. [Bar settings an
 drag Dictate onto a key. Windows briefly restarts Stream Deck to install; Mac uses
 Stream Deck's confirmation. Includes hold-to-talk, copy recent,
 Open app and Cancel, with recording status on the keys. [Setup guide](docs/stream-deck.md).
+
+Settings are grouped into **Writing** (Style, Snippets, Vocabulary), **Access**
+(Shortcuts, Dictation bar), **System** (General, Models), and **Integrations**.
+
+**Programmable mouse buttons:** in **Settings → Access → Shortcuts**, click your
+shortcut and press a middle or side mouse button. Hold to dictate; release to
+insert text. Keyboard shortcuts remain available.
 
 ## Choose how your words appear
 
@@ -67,7 +74,7 @@ Open app and Cancel, with recording status on the keys. [Setup guide](docs/strea
 Polish always chooses the layout automatically from your message: sentences,
 paragraphs, lists, goals, instructions, recipes, reports, emails, tables, blog
 posts, essays, meeting notes, checklists, outlines, proposals, agendas, FAQs,
-social posts or scripts. Select **Settings → Style → Polish** and speak. Auto uses
+social posts or scripts. Select **Settings → Writing → Style → Polish** and speak. Auto uses
 the resident local LLM; there is no extra model download or format picker.
 Ordinary messages stay sentences. Supplied questions and answers can become an
 FAQ without saying “FAQ”. Tables use supplied values and copy as rich tables in

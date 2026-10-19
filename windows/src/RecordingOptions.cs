@@ -3,10 +3,11 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace LocalFlow {
 public static class Hotkey {
-    public static bool Mouse(string value){return value=="Mouse 4"||value=="Mouse 5";}
+    public static bool Mouse(string value){return value=="Middle mouse"||value=="Mouse 4"||value=="Mouse 5";}
     public static bool Parse(string value,out uint modifiers,out uint key){
         modifiers=0x4000;key=0;if(String.IsNullOrWhiteSpace(value))return false;
         foreach(string part in value.Split('+').Select(p=>p.Trim())){
@@ -19,12 +20,15 @@ public static class Hotkey {
 }
 public sealed class ShortcutPicker : ModernButton {
     public string Value {get;private set;}public bool Capturing {get;private set;}
+    HoldMouseInput mouseCapture;
+    public event Action<string> Picked;
     public ShortcutPicker(string value){Value=value;Text=value;Name="Record shortcut";AccessibleName="Record shortcut";AutoSize=false;Size=new Size(570,44);FlatStyle=FlatStyle.Flat;FlatAppearance.BorderColor=Theme.Line;BackColor=Theme.Surface;Cursor=Cursors.Hand;Margin=new Padding(0,0,0,12);}
-    protected override void OnClick(EventArgs e){base.OnClick(e);if(!Capturing){Capturing=true;ShortcutWindow.Capturing=true;Text="Press your shortcut… (Esc cancels)";Focus();}}
-    void Finish(string value){if(value!=null)Value=value;Capturing=false;ShortcutWindow.Capturing=false;Text=Value;}
+    protected override void OnClick(EventArgs e){base.OnClick(e);if(Capturing){Finish(null);return;}Capturing=true;ShortcutWindow.Capturing=true;Text="Press keys or middle/side mouse · Esc cancels";Focus();HoldMouseInput input=new HoldMouseInput(SynchronizationContext.Current??new WindowsFormsSynchronizationContext());mouseCapture=input;try{input.BeginCapture(value=>{if(Capturing&&mouseCapture==input)Finish(value);});}catch{input.Dispose();mouseCapture=null;Text="Mouse unavailable · press a keyboard shortcut";}}
+    void Finish(string value){if(mouseCapture!=null){mouseCapture.Dispose();mouseCapture=null;}if(value!=null)Value=value;Capturing=false;ShortcutWindow.Capturing=false;Text=Value;if(value!=null&&Picked!=null)Picked(value);}
     protected override bool ProcessCmdKey(ref Message msg,Keys data){if(Capturing){if((data&Keys.KeyCode)==Keys.Escape){Finish(null);return true;}string value=Hotkey.Format(data);if(value!=null)Finish(value);else Text="Use Ctrl, Alt or Shift + a key, or F1–F24";return true;}return base.ProcessCmdKey(ref msg,data);}
-    protected override void OnMouseDown(MouseEventArgs e){if(Capturing&&(e.Button==MouseButtons.XButton1||e.Button==MouseButtons.XButton2)){Finish(e.Button==MouseButtons.XButton1?"Mouse 4":"Mouse 5");return;}base.OnMouseDown(e);}
+    protected override void OnMouseDown(MouseEventArgs e){if(Capturing&&(e.Button==MouseButtons.Middle||e.Button==MouseButtons.XButton1||e.Button==MouseButtons.XButton2)){Finish(e.Button==MouseButtons.Middle?"Middle mouse":e.Button==MouseButtons.XButton1?"Mouse 4":"Mouse 5");return;}base.OnMouseDown(e);}
     protected override void OnLostFocus(EventArgs e){if(Capturing)Finish(null);base.OnLostFocus(e);}
+    protected override void OnVisibleChanged(EventArgs e){if(Capturing&&!Visible)Finish(null);base.OnVisibleChanged(e);}
     protected override void Dispose(bool disposing){if(Capturing)Finish(null);base.Dispose(disposing);}
 }
 public static class RecordingModes {

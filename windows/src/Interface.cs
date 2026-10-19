@@ -38,22 +38,20 @@ public sealed class HubWindow : Form {
         Text=Brand.Name;Icon=Brand.CreateIcon();ClientSize=new Size(1100,800);MinimumSize=new Size(950,740);StartPosition=FormStartPosition.CenterScreen;Font=new Font("Segoe UI",10);BackColor=Color.White;ForeColor=Theme.Ink;
         Panel sidebar=new Panel {Dock=DockStyle.Fill,BackColor=Color.White,Margin=Padding.Empty};sidebar.Paint+=(s,e)=>{using(Pen line=new Pen(Theme.Line))e.Graphics.DrawLine(line,sidebar.Width-1,0,sidebar.Width-1,sidebar.Height);};
         Panel brand=new Panel {Dock=DockStyle.Top,Height=102};brand.Controls.Add(new PictureBox {Image=Brand.Logo,SizeMode=PictureBoxSizeMode.Zoom,Location=new Point(18,24),Size=new Size(52,52)});brand.Controls.Add(new Label {Text="Open Mic\nAI",Font=new Font("Segoe UI",14,FontStyle.Bold),Location=new Point(82,25),Size=new Size(110,58)});sidebar.Controls.Add(navigation);sidebar.Controls.Add(status);sidebar.Controls.Add(brand);
-        foreach(string name in new[]{"Home","History","Snippets","Vocabulary","Settings"}) {string item=name;Button button=new ModernButton {Text=item,Tag="nav",Size=new Size(175,46),TextAlign=ContentAlignment.MiddleLeft,Padding=new Padding(7,0,0,0),Margin=new Padding(0,0,0,7),FlatStyle=FlatStyle.Flat,BackColor=Color.White,ForeColor=Theme.Ink,Cursor=Cursors.Hand};button.FlatAppearance.BorderSize=0;button.Click+=(s,e)=>Navigate(item);navigation.Controls.Add(button);}
+        foreach(string name in new[]{"Home","History","Settings"}) {string item=name;Button button=new ModernButton {Text=item,Tag="nav",Size=new Size(175,46),TextAlign=ContentAlignment.MiddleLeft,Padding=new Padding(7,0,0,0),Margin=new Padding(0,0,0,7),FlatStyle=FlatStyle.Flat,BackColor=Color.White,ForeColor=Theme.Ink,Cursor=Cursors.Hand};button.FlatAppearance.BorderSize=0;button.Click+=(s,e)=>Navigate(item);navigation.Controls.Add(button);}
         Panel main=new Panel {Dock=DockStyle.Fill,Padding=new Padding(8,0,16,14),Margin=Padding.Empty};main.Controls.Add(content);main.Controls.Add(heading);
         TableLayoutPanel shell=new TableLayoutPanel {Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,Margin=Padding.Empty,Padding=Padding.Empty};shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,205));shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));shell.RowStyles.Add(new RowStyle(SizeType.Percent,100));shell.Controls.Add(sidebar,0,0);shell.Controls.Add(main,1,0);Controls.Add(shell);Navigate("Home");
     }
     public void SetStatus(string value){status.Text=value+"\nEnglish · local";if(page!=null)foreach(ModelWindow model in Descendants(page).OfType<ModelWindow>())model.UpdateStatus(value,getSettings());}
     static System.Collections.Generic.IEnumerable<Control> Descendants(Control root){yield return root;foreach(Control child in root.Controls)foreach(Control item in Descendants(child))yield return item;}
     public void Navigate(string name) {
-        string section=name=="Style"||name=="Models"?name:null;if(section!=null)name="Settings";
+        string section=new[]{"Style","Snippets","Vocabulary","Shortcuts","Dictation bar","Models","General","Integrations"}.Contains(name)?name:null;if(section!=null)name="Settings";
         if(page!=null){content.Controls.Remove(page);page.Dispose();page=null;}foreach(Control old in content.Controls.Cast<Control>().ToArray())old.Dispose();content.Controls.Clear();heading.Text=name;
         foreach(Button button in navigation.Controls.OfType<Button>()){bool active=button.Text==name;button.BackColor=active?Color.FromArgb(255,240,242):Color.White;button.ForeColor=active?Theme.Accent:Theme.Ink;}
         switch(name) {
             case "Home":page=new DashboardWindow(history,usage,()=>Navigate("History"));break;
             case "History":page=new HistoryWindow(history,getSettings().SaveHistory,enabled=>{Settings next=getSettings();next.SaveHistory=enabled;saveSettings(next);},importer);break;
-            case "Vocabulary":page=new PersonalizationWindow(personalization,false);break;
-            case "Snippets":page=new PersonalizationWindow(personalization,true);break;
-            case "Settings":SettingsWindow settings=new SettingsWindow(getSettings(),shortcuts,null,editShortcut,modelFactory,getSettings,usage.Data.Apps.Select(a=>a.Name).ToArray(),()=>usage.Clear());settings.Saved=saveSettings;if(section!=null)settings.SelectSection(section);page=settings;break;
+            case "Settings":SettingsWindow settings=new SettingsWindow(getSettings(),shortcuts,null,editShortcut,modelFactory,getSettings,usage.Data.Apps.Select(a=>a.Name).ToArray(),()=>usage.Clear(),personalization);settings.Saved=saveSettings;if(section!=null)settings.SelectSection(section);page=settings;break;
             default:Navigate("Home");return;
         }
         Embed(page);

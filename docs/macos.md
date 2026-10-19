@@ -10,8 +10,8 @@ Silicon and Intel have separate packages. This preview targets **macOS 13+**.
 1. Download the Mac ZIP matching your architecture: `arm64` for Apple Silicon,
    `x86_64` for Intel.
 2. Unzip and move **Open Mic AI.app** to Applications.
-3. Open it and download both models in **Settings → Models**.
-4. Allow microphone access when prompted. Use **Settings → Shortcuts → Allow
+3. Open it and download both models in **Settings → System → Models**.
+4. Allow microphone access when prompted. Use **Settings → Access → Shortcuts → Allow
    text-box access** to grant macOS Accessibility access for selection capture
    and automatic paste.
 

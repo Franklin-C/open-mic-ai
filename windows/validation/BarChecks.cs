@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -23,14 +23,17 @@ public static class BarChecks {
         Application.EnableVisualStyles();string folder=args[0];Directory.CreateDirectory(folder);bool native=args.Contains("--native-shell");
         File.WriteAllText(Path.Combine(folder,"preferences.json"),"{\"Shortcut\":\"Ctrl + D0\",\"ShowBar\":false,\"Speech\":\"my-speech.gguf\",\"Text\":\"my-llm.gguf\",\"Vocabulary\":\"Acme\"}");
         Settings settings=Settings.Load(folder);Check(!settings.ShowBar&&settings.BarLayout=="Horizontal"&&!settings.TaskbarControl,"Old preferences keep visibility and default to horizontal with taskbar off");Check(settings.Shortcut=="Ctrl + D0"&&settings.Speech=="my-speech.gguf"&&settings.Text=="my-llm.gguf"&&settings.Vocabulary=="Acme","Settings migration preserves shortcut, models and vocabulary");
-        using(SettingsWindow window=new SettingsWindow(settings,new[]{settings.Shortcut},current:()=>settings)){
+        using(SettingsWindow window=new SettingsWindow(settings,new[]{settings.Shortcut},current:()=>settings,personalStore:new PersonalizationStore(folder))){
             window.Saved=value=>settings=value;window.Show();Application.DoEvents();
+            TabControl root=window.Controls.OfType<TabControl>().Single();Check(root.TabPages.Cast<TabPage>().Select(page=>page.Text).SequenceEqual(new[]{"Writing","Access","System","Integrations"}),"Settings has Writing, Access, System and Integrations groups");
+            window.SelectSection("Snippets");Check(root.SelectedTab.Text=="Writing"&&Find(window,"Add snippet").Visible,"Snippets opens inside Writing");window.SelectSection("Vocabulary");Check(root.SelectedTab.Text=="Writing"&&Find(window,"Add word").Visible,"Vocabulary opens inside Writing");window.SelectSection("Models");Check(root.SelectedTab.Text=="System","Models opens inside System");window.SelectSection("General");Check(root.SelectedTab.Text=="System"&&Find(window,"Start at sign-in").Visible,"General keeps existing system preferences");
             Check(Page(Find(window,"Install plugin")).Text=="Integrations","Stream Deck installer belongs to Integrations");
             Check(Page(Find(window,"Show dictation bar")).Text=="Dictation bar"&&Page(Find(window,"Show taskbar control")).Text=="Dictation bar","Bar controls belong to Dictation bar");
             window.SelectSection("Dictation bar");Application.DoEvents();((CheckBox)Find(window,"Show dictation bar")).Checked=true;((RadioButton)Find(window,"Vertical")).Checked=true;((CheckBox)Find(window,"Show taskbar control")).Checked=true;
             Check(settings.ShowBar&&settings.BarLayout=="Vertical"&&settings.TaskbarControl,"Visibility, layout and taskbar controls save immediately");settings.Save(folder);Settings restored=Settings.Load(folder);Check(restored.BarLayout=="Vertical"&&restored.TaskbarControl,"New bar preferences round-trip");
             Save(window,Path.Combine(folder,"dictation-bar-settings.png"));window.SelectSection("Integrations");Application.DoEvents();Save(window,Path.Combine(folder,"streamdeck-settings.png"));
-            ((RadioButton)Find(window,"Horizontal")).Checked=true;Check(settings.BarLayout=="Horizontal"&&settings.Speech=="my-speech.gguf","Layout changes preserve other preferences");window.Close();
+            ((RadioButton)Find(window,"Horizontal")).Checked=true;Check(settings.BarLayout=="Horizontal"&&settings.Speech=="my-speech.gguf","Layout changes preserve other preferences");
+            window.SelectSection("Shortcuts");ShortcutPicker picker=(ShortcutPicker)Find(window,settings.Shortcut);picker.PerformClick();typeof(ShortcutPicker).GetMethod("OnMouseDown",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(picker,new object[]{new MouseEventArgs(MouseButtons.XButton1,1,10,10,0)});Check(((RadioButton)Find(window,"Hold to talk")).Checked,"Choosing a mouse shortcut selects hold to talk");((Button)Find(window,"Save shortcut")).PerformClick();Check(settings.Shortcut=="Mouse 4"&&settings.RecordingMode=="Hold to talk","Mouse shortcut and hold mode save together");Save(window,Path.Combine(folder,"shortcut-settings.png"));picker.PerformClick();window.SelectSection("Dictation bar");Check(!picker.Capturing&&!ShortcutWindow.Capturing,"Changing settings subpage ends input capture");window.Close();
         }
         using(Pill pill=new Pill())using(TaskbarControl taskbar=new TaskbarControl()){
             int start=0,copy=0,open=0,release=0,hide=0;pill.Start=()=>start++;pill.History=()=>open++;pill.CopyResult=text=>{copy++;return true;};pill.Release=()=>release++;pill.HideBar=()=>hide++;pill.RememberResult("Recent transcription.");pill.Available=true;pill.Persistent=true;pill.ShowIdle();

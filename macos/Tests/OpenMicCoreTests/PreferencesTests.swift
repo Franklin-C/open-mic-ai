@@ -2,6 +2,16 @@ import XCTest
 @testable import OpenMicCore
 
 final class PreferencesTests: XCTestCase {
+    func testSettingsGroupsKeepRelatedPagesTogether() {
+        XCTAssertEqual(SettingsNavigation.groups, ["Writing", "Access", "System", "Integrations"])
+        XCTAssertEqual(SettingsNavigation.pages("Writing"), ["Style", "Snippets", "Vocabulary"])
+        XCTAssertEqual(SettingsNavigation.pages("Access"), ["Shortcuts", "Dictation bar"])
+        XCTAssertEqual(SettingsNavigation.pages("System"), ["General", "Models"])
+        for group in SettingsNavigation.groups {
+            for page in SettingsNavigation.pages(group) { XCTAssertEqual(SettingsNavigation.group(for: page), group) }
+        }
+        XCTAssertEqual(SettingsNavigation.group(for: "Integrations"), "Integrations")
+    }
     func testOldSettingsKeepPersonalChoices() throws {
         let data = Data(#"{"style":"Custom","custom":"Use short paragraphs","recordingMode":"Automatic","keyCode":29,"keyModifiers":4096,"shortcutLabel":"Control + 0","speechModel":"chosen-speech.bin","languageModel":"chosen-llm.gguf","saveHistory":false,"showBar":false,"translationLanguage":"Spanish"}"#.utf8)
         let preferences = try JSONDecoder().decode(Preferences.self, from: data)

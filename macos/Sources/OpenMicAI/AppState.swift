@@ -34,11 +34,15 @@ import OpenMicCore
     private var target: FocusTarget?
     private var recordingPreferences = Preferences()
     private var voiceInstruction = false
+    private var startingRecording = false
+    private var releasedWhileStarting = false
     private var epoch = UUID()
     private var timer: Timer?
     private var previewTask: Task<Void, Never>?
     private var work: Task<Void, Never>?
     private var shortcutMonitor: Any?
+    private var shortcutMouseCapture: MouseShortcutInput?
+    private var shortcutDeactivation: NSObjectProtocol?
     private var previewBusy = false
     private var streamDeck: StreamDeckBridge?
     private var streamDeckHolding = false
@@ -64,8 +68,8 @@ import OpenMicCore
             self.aiTokens.add(usage); self.write("ai-tokens.json", self.aiTokens)
         }
         hotkey.pressed = { [weak self] in self?.shortcut() }
-        hotkey.released = { [weak self] in if let self, self.phase == "recording", self.recordingPreferences.recordingMode == .hold { self.finishRecording() } }
-        do { try hotkey.register(code: preferences.keyCode, modifiers: preferences.keyModifiers) }
+        hotkey.released = { [weak self] in self?.releaseShortcut() }
+        do { try installShortcut(preferences) }
         catch { message = error.localizedDescription }
         streamDeck = try? StreamDeckBridge(root: root) { [weak self] command in self?.streamDeckCommand(command) ?? ["ok": false] }
         Task { await loadModels(download: false) }
@@ -85,7 +89,9 @@ import OpenMicCore
         modelBusy = true; defer { modelBusy = false }
         do { try await models.load(preferences, download: download) } catch { status = error.localizedDescription }
     }
+    private func releaseShortcut() { if startingRecording { releasedWhileStarting = true } else if phase == "recording", recordingPreferences.recordingMode == .hold { finishRecording() } }
     func shortcut(recordingMode: RecordingMode? = nil) {
+        guard !startingRecording else { return }
         if phase == "recording" { if recordingPreferences.recordingMode != .hold { finishRecording() }; return }
         if phase == "actions" { startRecording(instruction: true); return }
         guard phase != "ai", phase != "transcribing", !modelBusy, !importBusy else { return }
@@ -97,16 +103,18 @@ import OpenMicCore
         startRecording(instruction: !selection.isEmpty, recordingMode: recordingMode)
     }
     func startRecording(instruction: Bool, recordingMode: RecordingMode? = nil) {
-        guard phase != "recording" else { return }
+        guard phase != "recording", !startingRecording else { return }
         if instruction && target?.matches(requireSelection: true) != true { cancel(); message = "Selection changed. Select the text again."; return }
-        voiceInstruction = instruction; recordingPreferences = preferences; let current = UUID(); epoch = current
+        startingRecording = true; releasedWhileStarting = false; voiceInstruction = instruction; recordingPreferences = preferences; let current = UUID(); epoch = current
         if let recordingMode { recordingPreferences.recordingMode = recordingMode }
         work = Task {
+            defer { if epoch == current { startingRecording = false } }
             let allowed = await AVCaptureDevice.requestAccess(for: .audio)
             guard !Task.isCancelled, epoch == current else { return }
             guard allowed else { message = "Allow microphone access in macOS Privacy & Security."; return }
             do {
-                try audio.start(); phase = "recording"; preview = "Listening…"; result = ""; previewBusy = false; showBar()
+                try audio.start(); startingRecording = false; phase = "recording"; preview = "Listening…"; result = ""; previewBusy = false; showBar()
+                if releasedWhileStarting && recordingPreferences.recordingMode == .hold { finishRecording(); return }
                 timer?.invalidate(); var lastPreview = 0.0
                 timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
                     Task { @MainActor in
@@ -184,14 +192,25 @@ import OpenMicCore
         preview = action == "Translate" || action == "Summarize" ? action : "Ready to copy"
         phase = "result"; showBar()
     }
-    func cancel() { epoch = UUID(); work?.cancel(); previewTask?.cancel(); timer?.invalidate(); timer = nil; audio.stop(); phase = "idle"; preview = ""; result = ""; selection = ""; if preferences.showBar { showBar() } else { hideBar() } }
+    func cancel() { startingRecording = false; releasedWhileStarting = false; epoch = UUID(); work?.cancel(); previewTask?.cancel(); timer?.invalidate(); timer = nil; audio.stop(); phase = "idle"; preview = ""; result = ""; selection = ""; if preferences.showBar { showBar() } else { hideBar() } }
     func hideFloatingBar() { preferences.showBar = false; cancel(); save() }
     func permissions() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
     }
+    private func installShortcut(_ value: Preferences) throws { if let button = value.mouseButton { try hotkey.registerMouse(button: button) } else { try hotkey.register(code: value.keyCode, modifiers: value.keyModifiers) } }
+    private func finishMouseShortcut(_ button: Int) {
+        guard capturingShortcut, let choice = MouseShortcut(rawValue: button) else { return }
+        let old = preferences
+        do { try hotkey.registerMouse(button: button); preferences.mouseButton = button; preferences.recordingMode = .hold; preferences.shortcutLabel = choice.label; message = ""; save() }
+        catch { try? installShortcut(old); message = error.localizedDescription }
+        cancelShortcut()
+    }
     func recordShortcut() {
         cancelShortcut(); capturingShortcut = true; hotkey.capturing = true
+        shortcutDeactivation = NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.cancelShortcut() } }
+        do { shortcutMouseCapture = try MouseShortcutInput(capture: true, captured: { [weak self] button in self?.finishMouseShortcut(button) }) }
+        catch { message = error.localizedDescription }
         shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] (event: NSEvent) -> NSEvent? in
             guard let self else { return event }
             if event.keyCode == 53 { self.cancelShortcut(); return nil }
@@ -203,12 +222,12 @@ import OpenMicCore
             }
             labels.append(event.keyCode == 49 ? "Space" : (event.charactersIgnoringModifiers ?? "Key \(event.keyCode)").uppercased())
             let old = self.preferences
-            do { try self.hotkey.register(code: UInt32(event.keyCode), modifiers: modifiers); self.preferences.keyCode = UInt32(event.keyCode); self.preferences.keyModifiers = modifiers; self.preferences.shortcutLabel = labels.joined(separator: " + "); self.save() }
-            catch { try? self.hotkey.register(code: old.keyCode, modifiers: old.keyModifiers); self.message = error.localizedDescription }
+            do { try self.hotkey.register(code: UInt32(event.keyCode), modifiers: modifiers); self.preferences.mouseButton = nil; self.preferences.keyCode = UInt32(event.keyCode); self.preferences.keyModifiers = modifiers; self.preferences.shortcutLabel = labels.joined(separator: " + "); self.message = ""; self.save() }
+            catch { try? self.installShortcut(old); self.message = error.localizedDescription }
             self.cancelShortcut(); return nil
         }
     }
-    func cancelShortcut() { if let shortcutMonitor { NSEvent.removeMonitor(shortcutMonitor) }; shortcutMonitor = nil; capturingShortcut = false; hotkey.capturing = false }
+    func cancelShortcut() { shortcutMouseCapture?.stop(); shortcutMouseCapture = nil; if let shortcutDeactivation { NotificationCenter.default.removeObserver(shortcutDeactivation) }; shortcutDeactivation = nil; if let shortcutMonitor { NSEvent.removeMonitor(shortcutMonitor) }; shortcutMonitor = nil; capturingShortcut = false; hotkey.capturing = false }
     func importFile(_ url: URL, edit: Bool) {
         guard !importBusy else { return }
         guard !modelBusy, phase == "idle" || phase == "result", models.ready else { importStatus = "Finish the current action and load models in Settings first."; return }
@@ -246,7 +265,7 @@ import OpenMicCore
         let time = Int(chunk.seconds); importStatus = String(format: "Transcribing · %02d:%02d:%02d", time / 3600, (time / 60) % 60, time % 60)
     }
     func cancelImport() { importTask?.cancel() }
-    func shutdown() { streamDeck?.stop(); cancelImport(); cancel(); cancelShortcut(); models.shutdown() }
+    func shutdown() { hotkey.stop(); streamDeck?.stop(); cancelImport(); cancel(); cancelShortcut(); models.shutdown() }
     func installStreamDeck() { do { message = try StreamDeckIntegration.install() } catch { message = error.localizedDescription } }
     private func streamDeckCommand(_ command: String) -> [String: Any] {
         switch command {

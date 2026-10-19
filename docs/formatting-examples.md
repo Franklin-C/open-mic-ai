@@ -2,7 +2,7 @@
 
 [← Open Mic AI](../README.md)
 
-Choose **Settings → Style → Polish**, then speak. The local AI improves phrasing and chooses the layout from your content. There is no format picker or wording toggle.
+Choose **Settings → Writing → Style → Polish**, then speak. The local AI improves phrasing and chooses the layout from your content. There is no format picker or wording toggle.
 
 **Raw transcript** skips AI editing. **Clean up** fixes fillers, grammar and punctuation. **Polish** rewrites and formats automatically. **Custom** uses your prompt. Vocabulary corrections and saved snippets work in all four styles.
 
