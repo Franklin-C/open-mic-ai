@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -86,7 +86,7 @@ public static class HistoryChecks {
         await store.FlushAsync();
     }
     static async Task Integration(Form form,TextBox first,TextBox second) {
-        FlowContext context=new FlowContext(fixture);
+        FlowContext context=new FlowContext(fixture,integrateShell:false);
         try {
             await Wait(()=>Field<Models>(context,"models")!=null&&Field<Models>(context,"models").Alive);HistoryStore history=Field<HistoryStore>(context,"history");Settings settings=Field<Settings>(context,"settings");settings.ShowBar=false;Field<Pill>(context,"pill").Persistent=false;Field<Pill>(context,"pill").Conceal();
             Check(Field<Models>(context,"models").Alive,"Resident models ready for paste and history integration");
@@ -98,7 +98,7 @@ public static class HistoryChecks {
             await history.FlushAsync();HistoryEntry entry=new HistoryStore(fixture).Snapshot().Single();report["cleanup_paste_history_seconds"]=watch.Elapsed.TotalSeconds;
             report["first_paste_diagnostics"]=new {fieldText=first.Text,result=entry.Result,window=session.Target.Window.ToInt64(),expectedWindow=form.Handle.ToInt64(),control=session.Target.Control.ToInt64(),expectedControl=first.Handle.ToInt64(),currentWindow=Native.GetForegroundWindow().ToInt64(),currentControl=Native.FocusedHandle(Native.GetForegroundWindow()).ToInt64(),matches=session.Target.MatchesCurrent(),modifiers=Native.ModifiersDown()};
             Check(first.Text==entry.Result&&first.Text.Contains("Priya")&&entry.Transcript.StartsWith("um"),"Completed cleanup automatically pastes and saves both text versions");Check(Clipboard.GetText()=="History clipboard sentinel","Automatic paste preserves previous clipboard");
-            Pill pill=Field<Pill>(context,"pill");Check(!pill.ResultReady&&!IsWindowVisible(pill.Handle)&&pill.RecentText==entry.Result&&session.Target.MatchesCurrent(),"Successful automatic paste dismisses the Copy card and remembers recent text");pill.Persistent=true;pill.ShowIdle();Rectangle recentButton=pill.RecentCopyBounds;PostMessage(pill.Handle,0x201,new IntPtr(1),new IntPtr(((recentButton.Top+14)<<16)|(recentButton.Left+14)));PostMessage(pill.Handle,0x202,IntPtr.Zero,new IntPtr(((recentButton.Top+14)<<16)|(recentButton.Left+14)));await Task.Delay(80);Check(Clipboard.GetText()==entry.Result&&pill.Idle&&!pill.ResultReady&&session.Target.MatchesCurrent(),"Copy recent works from the compact bar without taking the text field focus");pill.Persistent=false;pill.Conceal();
+            Pill pill=Field<Pill>(context,"pill");Check(!pill.ResultReady&&!IsWindowVisible(pill.Handle)&&pill.RecentText==entry.Result,"Successful automatic paste dismisses the Copy card and remembers recent text");Activate(form,first);await Wait(()=>Native.GetForegroundWindow()==form.Handle&&Native.FocusedHandle(form.Handle)==first.Handle);pill.Persistent=true;pill.ShowIdle();Rectangle recentButton=pill.RecentCopyBounds;PostMessage(pill.Handle,0x201,new IntPtr(1),new IntPtr(((recentButton.Top+14)<<16)|(recentButton.Left+14)));PostMessage(pill.Handle,0x202,IntPtr.Zero,new IntPtr(((recentButton.Top+14)<<16)|(recentButton.Left+14)));await Task.Delay(80);Check(Clipboard.GetText()==entry.Result&&pill.Idle&&!pill.ResultReady&&session.Target.MatchesCurrent(),"Copy recent works from the compact bar without taking the text field focus");pill.Persistent=false;pill.Conceal();
             Activate(form,first);await Task.Delay(100);string before=first.Text;session=new DictationSession {Target=FocusTarget.Capture(),Style="Original transcript",Rewrite=false};TaskCompletionSource<string> delayed=new TaskCompletionSource<string>();session.Pending.Add(delayed.Task);
             typeof(FlowContext).GetField("session",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(context,session);Call(context,"Finish",session);second.Focus();delayed.SetResult("Retained after focus changed.");await Wait(()=>Field<DictationSession>(context,"session")==null);await history.FlushAsync();
             Check(first.Text==before&&second.Text==""&&new HistoryStore(fixture).Snapshot()[0].Result=="Retained after focus changed.","Changed focus prevents paste and retains result in history");

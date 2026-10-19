@@ -47,8 +47,9 @@ model selectors.
 
 **Dictation bar:** choose **Settings → Access → Dictation bar** to keep it visible and
 switch between horizontal and vertical controls. Recording and AI cards expand
-when needed. On Windows, you can also enable a taskbar control: hover to see live
-words, stop recording, copy the latest result, or open the app. [Bar settings and previews](docs/dictation-bar.md).
+when needed. Windows **Settings → Access → Taskbar** has separate switches for
+live words, recording indicators, hover buttons, and right-click shortcuts. Click
+the taskbar icon to open the app. [Bar settings and previews](docs/dictation-bar.md).
 
 **Stream Deck:** open **Settings → Integrations → Stream Deck → Install plugin**, then
 drag Dictate onto a key. Windows briefly restarts Stream Deck to install; Mac uses
@@ -56,7 +57,7 @@ Stream Deck's confirmation. Includes hold-to-talk, copy recent,
 Open app and Cancel, with recording status on the keys. [Setup guide](docs/stream-deck.md).
 
 Settings are grouped into **Writing** (Style, Snippets, Vocabulary), **Access**
-(Shortcuts, Dictation bar), **System** (General, Models), and **Integrations**.
+(Shortcuts, Dictation bar, plus Taskbar on Windows), **System** (General, Models), and **Integrations**.
 
 **Programmable mouse buttons:** in **Settings → Access → Shortcuts**, click your
 shortcut and press a middle or side mouse button. Hold to dictate; release to
@@ -153,12 +154,17 @@ history when history saving is enabled; no audio copy is saved.
 
 ![Import a recording and copy its transcript inside History](docs/images/hub-import.png)
 
-Home shows the five newest dictations and local usage, including cumulative **AI
-input tokens, output tokens and total tokens**. Counts come from the language
-model and include layout planning and editing checks. Counting starts with this
-update; earlier usage is not estimated. History and imports have separate
-**Copy original** and **Copy modified** buttons. Vocabulary and snippets apply to
-Raw transcript, Clean up, Polish and Custom.
+Home shows the five newest dictations and local usage. History and imports have
+separate **Copy original** and **Copy modified** buttons. Vocabulary and snippets
+apply to Raw transcript, Clean up, Polish and Custom.
+
+**Stats** sits just below History: filter by 7, 30 or 90 days, or All time. Explore
+word and AI-token trends, speaking speed, estimated time saved, app and style
+usage, busiest hours, streaks, personal records and word milestones. Set your own
+typing speed for the time estimate. Stats stay local and persist independently of
+the history limit. [Stats guide and counting details](docs/stats.md).
+
+![Stats dashboard with synthetic demo data](docs/images/stats-overview.png)
 
 ## Inside the app
 

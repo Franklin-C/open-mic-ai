@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -26,6 +26,8 @@ public sealed class Settings {
     public bool ShowBar=true,Sounds=false,MutePlayback=false;
     public string BarLayout="Horizontal";
     public bool TaskbarControl=false;
+    public bool TaskbarLiveWords=true,TaskbarIndicator=true,TaskbarButtons=true;
+    public bool TaskbarMenuDictate=true,TaskbarMenuCopy=true,TaskbarMenuOpen=true,TaskbarMenuBar=false,TaskbarMenuSettings=true,TaskbarMenuQuit=false;
     public string HoldMouse="Off",Cleanup="Light";
     public string Speech="tdt-0.6b-v2-q8_0.gguf", Text="Qwen3-4B-Instruct-2507-Q3_K_S.gguf";
     public static Settings Load(string root) {
@@ -96,7 +98,9 @@ public sealed class FlowContext : ApplicationContext {
     bool Busy {get{return session!=null||actionSession!=null||selectionProbe!=null||importer.Busy;}}
     string lastResult="",lastRaw="";
     bool exiting,booting;
-    public FlowContext(string directory,bool openWindow=false,EventWaitHandle reopen=null) {
+    readonly AppCommandChannel commands;readonly bool shellIntegration;string taskbarMenuSignature,startupCommand;
+    public FlowContext(string directory,bool openWindow=false,EventWaitHandle reopen=null,string command=null,bool integrateShell=true) {
+        startupCommand=command;shellIntegration=integrateShell;
         root=directory;settings=Settings.Load(root);history=new HistoryStore(root);personalization=new PersonalizationStore(root);usage=new UsageStore(root);
         ui=SynchronizationContext.Current??new WindowsFormsSynchronizationContext();HistoryEntry recent=history.Snapshot().FirstOrDefault();if(recent!=null)pill.RememberResult(!String.IsNullOrEmpty(recent.Result)?recent.Result:recent.VoiceEdit?recent.SelectedText:recent.Transcript);
         importer.CanStart=()=>!exiting&&!Busy&&!booting&&models!=null&&models.Alive;
@@ -141,7 +145,9 @@ public sealed class FlowContext : ApplicationContext {
         if(settings.LaunchAtLogin)try{ConfigureStartup();}catch(Exception error){ui.Post(s=>Notify("Could not update startup: "+error.Message),null);}
         if(reopen!=null)reopenWait=ThreadPool.RegisterWaitForSingleObject(reopen,(s,t)=>ui.Post(_=>ShowApp(),null),null,Timeout.Infinite,false);
         try{streamDeck=new StreamDeckBridge(ui,StreamDeckCommand);}catch(Exception error){Debug.WriteLine("Stream Deck unavailable: "+error.Message);}
+        if(shellIntegration)commands=new AppCommandChannel(ui,ExecuteAppCommand);
         Boot();
+        if(command!=null&&command!="dictate")ui.Post(s=>{startupCommand=null;ExecuteAppCommand(command);},null);
         if(openWindow)ui.Post(s=>ShowApp(),null);
     }
     static Icon MakeIcon(){return Brand.CreateIcon();}
@@ -177,7 +183,7 @@ public sealed class FlowContext : ApplicationContext {
         }
         catch(OperationCanceledException){if(!exiting){SetStatus("Model warm-up timed out");Notify("Model warm-up took too long. Use Reload and warm up models in the tray to try again.");}}
         catch(Exception e){if(!exiting){SetStatus("Models unavailable");Notify(e.Message);}}
-        finally{booting=false;}
+        finally{booting=false;if(startupCommand=="dictate"){startupCommand=null;ui.Post(s=>ExecuteAppCommand("dictate"),null);}}
     }
     void PowerChanged(object sender,Microsoft.Win32.PowerModeChangedEventArgs e){if(e.Mode==Microsoft.Win32.PowerModes.Resume)ui.Post(s=>{if(!exiting&&!booting&&!Busy&&(models==null||!models.Alive))Boot();},null);}
     void SetStatus(string text){if(exiting)return;status.Text=text;tray.Text=("Open Mic AI · "+text).Substring(0,Math.Min(63,12+text.Length));pill.Available=models!=null&&models.Alive;if(pill.Idle)pill.Invalidate();if(hub!=null&&!hub.IsDisposed)hub.SetStatus(text);}
@@ -186,9 +192,14 @@ public sealed class FlowContext : ApplicationContext {
     void SavePreferences(){try{settings.Save(root);}catch(Exception error){Notify("Could not save preferences: "+error.Message);}}
     void ConfigureStartup(){using(Microsoft.Win32.RegistryKey key=Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")){if(settings.LaunchAtLogin)key.SetValue("Open Mic AI","\""+Application.ExecutablePath+"\" --background");else key.DeleteValue("Open Mic AI",false);key.DeleteValue("LocalFlow",false);}}
     void ApplySettings(Settings value){settings=value;shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;pill.RecordingMode=RecordingModes.Normalize(settings.RecordingMode);try{holdMouse.Configure(Hotkey.Mouse(settings.Shortcut)?settings.Shortcut:settings.HoldMouse);settings.Save(root);ConfigureStartup();}catch(Exception error){Notify("Could not apply settings: "+error.Message);}pill.Vertical=settings.BarLayout=="Vertical";pill.Persistent=settings.ShowBar;ConfigureTaskbar();if(!Busy){if(pill.Persistent)pill.ShowIdle();else pill.Conceal();}SetStatus(models!=null&&models.Alive?"Ready · "+settings.Shortcut:"Models not ready");}
+    void ExecuteAppCommand(string action){
+        if(exiting)return;
+        switch(action){case "open":ShowApp();break;case "settings":OpenSettings();break;case "copy":Copy(pill.RecentText);break;case "dictate":if(session!=null||selectionProbe!=null||actionSession!=null)Toggle();else if(CanDictate())Begin(false,null,null,"Click to start / stop");break;case "bar":settings.ShowBar=true;pill.Persistent=true;if(!Busy)pill.ShowIdle();SavePreferences();break;case "quit":ExitThread();break;}
+    }
     void ConfigureTaskbar(){
+        string signature=String.Join(",",TaskbarShortcuts.Selected(settings));if(shellIntegration&&taskbarMenuSignature!=signature){if(TaskbarShortcuts.Publish(Application.ExecutablePath,TaskbarShortcuts.Selected(settings)))taskbarMenuSignature=signature;else Debug.WriteLine("Taskbar shortcuts: "+TaskbarShortcuts.LastError);}
         if(hub!=null&&!hub.IsDisposed)hub.ShowInTaskbar=!settings.TaskbarControl;
-        if(settings.TaskbarControl){if(taskbar==null){taskbar=new TaskbarControl();taskbar.Toggle=()=>{if(session!=null||selectionProbe!=null||actionSession!=null)Toggle();else if(CanDictate())Begin(false,null,null,"Click to start / stop");};taskbar.OpenApp=ShowApp;taskbar.CopyRecent=()=>Copy(pill.RecentText);taskbar.HideControl=()=>{settings.TaskbarControl=false;ConfigureTaskbar();SavePreferences();};taskbar.Show();}taskbar.UpdateState(pill,Busy,status.Text);taskbarUpdate.Start();}
+        if(settings.TaskbarControl){if(taskbar==null){taskbar=new TaskbarControl();taskbar.Toggle=()=>{if(session!=null||selectionProbe!=null||actionSession!=null)Toggle();else if(CanDictate())Begin(false,null,null,"Click to start / stop");};taskbar.OpenApp=ShowApp;taskbar.CopyRecent=()=>Copy(pill.RecentText);taskbar.HideControl=()=>{settings.TaskbarControl=false;ConfigureTaskbar();SavePreferences();};taskbar.Show();}taskbar.Configure(settings);taskbar.UpdateState(pill,Busy,status.Text);taskbarUpdate.Start();}
         else{taskbarUpdate.Stop();if(taskbar!=null){TaskbarControl old=taskbar;taskbar=null;old.Dispose();}}
     }
     void EnsureHub(){if(hub!=null&&!hub.IsDisposed)return;hub=new HubWindow(history,personalization,usage,()=>settings,ApplySettings,CreateModelWindow,shortcut.Choices,shortcut.EditLabel,importer);hub.ShowInTaskbar=!settings.TaskbarControl;hub.FormClosed+=(s,e)=>hub=null;}
@@ -196,7 +207,7 @@ public sealed class FlowContext : ApplicationContext {
     void ShowApp(){if(exiting)return;EnsureHub();hub.SetStatus(status.Text);hub.Show();if(hub.WindowState==FormWindowState.Minimized)hub.WindowState=FormWindowState.Normal;ShowWindow(hub.Handle,5);hub.BringToFront();hub.Activate();}
     void OpenHub(string page){if(exiting)return;if(Busy){Notify("Finish or cancel the current action first.");return;}EnsureHub();hub.Navigate(page);ShowApp();}
     void OpenHistory(){OpenHub("History");}
-    void SaveToHistory(DictationSession current,string transcript,string result){if(String.IsNullOrWhiteSpace(transcript))return;if(settings.SaveHistory)history.Add(transcript,result,current.SelectedText!=null?(current.ActionName=="Translate"?"Translate to "+current.ActionLanguage:current.ActionName=="Summarize"?"Summarize":"Voice edit"):current.Style,current.SelectedText);if(settings.SaveInsights&&current.SelectedText==null)usage.Record(transcript,String.IsNullOrEmpty(result)?transcript:result,current.RecordingSeconds,current.Application,DateTime.UtcNow);}
+    void SaveToHistory(DictationSession current,string transcript,string result){if(String.IsNullOrWhiteSpace(transcript))return;if(settings.SaveHistory)history.Add(transcript,result,current.SelectedText!=null?(current.ActionName=="Translate"?"Translate to "+current.ActionLanguage:current.ActionName=="Summarize"?"Summarize":"Voice edit"):current.Style,current.SelectedText);if(settings.SaveInsights&&current.SelectedText==null)usage.Record(transcript,String.IsNullOrEmpty(result)?transcript:result,current.RecordingSeconds,current.Application,DateTime.UtcNow,current.Style);}
     void OpenSettings(){OpenHub("Settings");}
     void OpenModels(){OpenHub("Models");}
     ModelWindow CreateModelWindow(){ModelWindow window=new ModelWindow(root,settings,specs??ComputerSpecs.Detect());window.CanApply=()=>!Busy&&!booting;window.ApplyModels=async pair=>{settings.Speech=pair.Speech.Name;settings.Text=pair.Text.Name;SavePreferences();await BootModels();return models!=null&&models.Alive;};return window;}
@@ -324,18 +335,19 @@ public sealed class FlowContext : ApplicationContext {
     }
     [System.Runtime.InteropServices.DllImport("user32.dll",EntryPoint="GetClipboardSequenceNumber")]static extern int ClipboardSequence();
     void Cancel(){bool probing=selectionProbe!=null;if(probing)selectionProbe.Cancel();TextActionSession action=actionSession;if(action!=null){actionSession=null;action.Cancel.Cancel();if(!action.Processing)action.Dispose();}DictationSession current=session;if(current!=null){current.Cancel.Cancel();current.Stop();session=null;}if(action==null&&current==null&&!probing)return;shortcut.ListenForEscape(false);pill.Conceal();SetStatus("Ready · "+settings.Shortcut);}
-    protected override void ExitThreadCore(){exiting=true;taskbarUpdate.Dispose();if(taskbar!=null)taskbar.Dispose();if(streamDeck!=null)streamDeck.Dispose();importer.Cancel();if(reopenWait!=null)reopenWait.Unregister(null);pill.Persistent=false;Cancel();holdMouse.Dispose();if(hub!=null)hub.Close();history.FlushAsync().GetAwaiter().GetResult();personalization.FlushAsync().GetAwaiter().GetResult();usage.FlushAsync().GetAwaiter().GetResult();level.Dispose();health.Dispose();Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;shortcut.Dispose();pill.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();if(models!=null)models.Dispose();base.ExitThreadCore();}
+    protected override void ExitThreadCore(){exiting=true;if(commands!=null)commands.Dispose();taskbarUpdate.Dispose();if(taskbar!=null)taskbar.Dispose();if(streamDeck!=null)streamDeck.Dispose();importer.Cancel();if(reopenWait!=null)reopenWait.Unregister(null);pill.Persistent=false;Cancel();holdMouse.Dispose();if(hub!=null)hub.Close();history.FlushAsync().GetAwaiter().GetResult();personalization.FlushAsync().GetAwaiter().GetResult();usage.FlushAsync().GetAwaiter().GetResult();level.Dispose();health.Dispose();Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;shortcut.Dispose();pill.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();if(models!=null)models.Dispose();base.ExitThreadCore();}
 }
 
 public static class Program {
     [System.Runtime.InteropServices.DllImport("user32.dll")]static extern bool AllowSetForegroundWindow(int processId);
     [STAThread] public static void Main(string[] args) {
-        bool created;bool openWindow=args.Contains("--open")||!args.Contains("--background");
+        string command=AppCommandChannel.Parse(args);bool created;bool openWindow=command==null&&(args.Contains("--open")||!args.Contains("--background"));
         using(EventWaitHandle reopen=new EventWaitHandle(false,EventResetMode.AutoReset,"Local\\OpenMicAI-ShowWindow"))
         using(Mutex mutex=new Mutex(true,"Local\\LocalFlow-2026-native",out created)) {
-            if(!created){if(openWindow){AllowSetForegroundWindow(-1);reopen.Set();}return;}
+            if(!created){if(command!=null){if(command=="open"||command=="settings")AllowSetForegroundWindow(-1);if(!AppCommandChannel.Send(command))reopen.Set();}else if(openWindow){AllowSetForegroundWindow(-1);reopen.Set();}return;}
+            TaskbarShortcuts.SetProcessId();
             Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
-            try{Application.Run(new FlowContext(PortableRuntime.Prepare(),openWindow,reopen));}
+            try{Application.Run(new FlowContext(PortableRuntime.Prepare(),openWindow,reopen,command));}
             catch(Exception error){MessageBox.Show("Open Mic AI could not start. Keep the app in a writable folder.\n\n"+error.Message,"Open Mic AI",MessageBoxButtons.OK,MessageBoxIcon.Error);}
         }
     }

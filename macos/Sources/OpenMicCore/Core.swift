@@ -58,12 +58,13 @@ public struct Preferences: Codable {
     public var speechModel = "ggml-small.en.bin"
     public var languageModel = "Qwen3-4B-Instruct-2507-Q3_K_S.gguf"
     public var saveHistory = true
+    public var trackUsage = true
     public var showBar = true
     public var barLayout: BarLayout = .horizontal
     public var translationLanguage = "French"
     public init() {}
     enum CodingKeys: String, CodingKey {
-        case style, reworded, custom, recordingMode, keyCode, keyModifiers, shortcutLabel, mouseButton, speechModel, languageModel, saveHistory, showBar, barLayout, translationLanguage
+        case style, reworded, custom, recordingMode, keyCode, keyModifiers, shortcutLabel, mouseButton, speechModel, languageModel, saveHistory, trackUsage, showBar, barLayout, translationLanguage
     }
     public init(from decoder: Decoder) throws {
         self.init()
@@ -79,6 +80,7 @@ public struct Preferences: Codable {
         speechModel = try values.decodeIfPresent(String.self, forKey: .speechModel) ?? speechModel
         languageModel = try values.decodeIfPresent(String.self, forKey: .languageModel) ?? languageModel
         saveHistory = try values.decodeIfPresent(Bool.self, forKey: .saveHistory) ?? saveHistory
+        trackUsage = try values.decodeIfPresent(Bool.self, forKey: .trackUsage) ?? trackUsage
         showBar = try values.decodeIfPresent(Bool.self, forKey: .showBar) ?? showBar
         barLayout = BarLayout(rawValue: try values.decodeIfPresent(String.self, forKey: .barLayout) ?? "") ?? .horizontal
         translationLanguage = try values.decodeIfPresent(String.self, forKey: .translationLanguage) ?? translationLanguage

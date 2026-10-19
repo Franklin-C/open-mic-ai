@@ -18,6 +18,8 @@ snippets.json*
 vocabulary.json*
 notes.json*
 usage.json*
+statistics.json*
+ai-tokens.json*
 connection.json
 verification-result.json
 package-manifest.json

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -43,7 +43,7 @@ public static class ModelLoadingChecks {
         }}finally{pair.Speech.Bytes=voiceBytes;pair.Text.Bytes=textBytes;pair.Speech.Sha256=voiceHash;pair.Text.Sha256=textHash;}
         string flowRoot=Path.Combine(fixture,"reopen-context");Directory.CreateDirectory(flowRoot);
         using(System.Threading.EventWaitHandle reopen=new System.Threading.EventWaitHandle(false,System.Threading.EventResetMode.AutoReset)){
-            FlowContext context=new FlowContext(flowRoot,false,reopen);
+            FlowContext context=new FlowContext(flowRoot,false,reopen,integrateShell:false);
             try{
                 await Wait(()=>!Field<bool>(context,"booting"));await Task.Delay(100);
                 typeof(FlowContext).GetMethod("OpenModels",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(context,null);

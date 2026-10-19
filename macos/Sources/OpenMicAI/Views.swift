@@ -8,7 +8,7 @@ import OpenMicCore
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack { Image(systemName: "mic.fill").font(.title).foregroundStyle(.red); Text("Open Mic AI").font(.title3.bold()) }.padding(.bottom, 28)
-                ForEach([("Home", "house"), ("History", "clock"), ("Settings", "gearshape")], id: \.0) { name, icon in
+                ForEach([("Home", "house"), ("History", "clock"), ("Stats", "chart.bar"), ("Settings", "gearshape")], id: \.0) { name, icon in
                     Button { state.page = name } label: {
                         Label(name, systemImage: icon).frame(maxWidth: .infinity, alignment: .leading).padding(12)
                             .foregroundStyle(state.page == name ? Color.red : Color.primary)
@@ -24,6 +24,7 @@ import OpenMicCore
                 switch state.page {
                 case "Home": HomeView(state: state)
                 case "History": HistoryView(state: state)
+                case "Stats": StatsView(state: state)
                 default: SettingsView(state: state)
                 }
                 if !state.message.isEmpty { HStack { Text(state.message).font(.caption).foregroundStyle(.secondary); Spacer(); Button("Dismiss") { state.message = "" } }.padding(.top, 8) }
@@ -39,10 +40,10 @@ import OpenMicCore
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 HStack(spacing: 35) {
-                    metric("Words", value: String(dictations.reduce(0) { $0 + WordGuard.words($1.source).count }))
-                    metric("Dictations", value: String(dictations.count))
-                    let seconds = dictations.reduce(0) { $0 + $1.duration }
-                    metric("Words / min", value: seconds > 0 ? String(Int(Double(dictations.reduce(0) { $0 + WordGuard.words($1.source).count }) * 60 / seconds)) : "—")
+                    let stats = state.statistics.snapshot(range: 0)
+                    metric("Words", value: stats.words.formatted())
+                    metric("Dictations", value: stats.sessions.formatted())
+                    metric("Words / min", value: stats.seconds > 0 ? String(Int(stats.wpm)) : "—")
                 }
                 HStack(spacing: 12) {
                     tokenMetric("AI input tokens", value: state.aiTokens.input)
@@ -51,9 +52,9 @@ import OpenMicCore
                 }.help("Local model token counts, including layout planning and editing checks. Counted from this update.")
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Activity").font(.headline)
-                    ActivityView(entries: dictations, selected: $day)
+                    ActivityView(usageDays: state.statistics.days, selected: $day)
                     if let day {
-                        let words = dictations.filter { Calendar.current.isDate($0.date, inSameDayAs: day) }.reduce(0) { $0 + WordGuard.words($1.source).count }
+                        let words = state.statistics.days[UsageStatistics.key(day)]?.words ?? 0
                         Text("\(day.formatted(date: .abbreviated, time: .omitted)) · \(words) words").font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(20).background(Color(white: 0.98), in: RoundedRectangle(cornerRadius: 14))
@@ -67,7 +68,7 @@ import OpenMicCore
     func tokenMetric(_ title: String, value: Int64) -> some View { VStack(alignment: .leading, spacing: 5) { Text(value.formatted()).font(.system(size: 25, weight: .semibold)); Text(title).font(.caption).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading).padding(16).background(Color(white: 0.98), in: RoundedRectangle(cornerRadius: 14)) }
 }
 struct ActivityView: View {
-    let entries: [HistoryEntry]
+    let usageDays: [String: UsageDay]
     @Binding var selected: Date?
     let days = (0..<112).map { Calendar.current.date(byAdding: .day, value: $0 - 111, to: Date())! }
     var body: some View {
@@ -79,7 +80,7 @@ struct ActivityView: View {
                         Text(week == 0 || Calendar.current.component(.day, from: first) <= 7 ? first.formatted(.dateTime.month(.abbreviated)) : " ").font(.system(size: 9)).frame(width: 22)
                         ForEach(0..<7, id: \.self) { offset in
                             let date = days[week * 7 + offset]
-                            let words = entries.filter { Calendar.current.isDate($0.date, inSameDayAs: date) }.reduce(0) { $0 + WordGuard.words($1.source).count }
+                            let words = usageDays[UsageStatistics.key(date)]?.words ?? 0
                             RoundedRectangle(cornerRadius: 3).fill(words == 0 ? Color.gray.opacity(0.1) : Color.red.opacity(min(1, 0.25 + Double(words) / 300)))
                                 .frame(width: 22, height: 18).overlay(RoundedRectangle(cornerRadius: 3).stroke(selected.map { Calendar.current.isDate($0, inSameDayAs: date) } == true ? Color.red : .clear, lineWidth: 2))
                                 .help("\(date.formatted(date: .abbreviated, time: .omitted)) · \(words) words")
@@ -181,7 +182,22 @@ struct ActivityView: View {
         VStack(alignment: .leading, spacing: 18) {
             Picker("Settings", selection: Binding(get: { group }, set: { state.section = SettingsNavigation.pages($0).first ?? "Integrations" })) { ForEach(SettingsNavigation.groups, id: \.self) { Text($0) } }.pickerStyle(.segmented).labelsHidden()
             if !SettingsNavigation.pages(group).isEmpty {
-                Picker("Section", selection: $state.section) { ForEach(SettingsNavigation.pages(group), id: \.self) { Text($0) } }.pickerStyle(.segmented).labelsHidden()
+                HStack(spacing: 18) {
+                    ForEach(SettingsNavigation.pages(group), id: \.self) { page in
+                        Button { state.section = page } label: {
+                            VStack(spacing: 9) {
+                                Text(page).font(.system(size: 12, weight: state.section == page ? .semibold : .regular)).foregroundStyle(state.section == page ? Color.primary : Color.secondary)
+                                Rectangle().fill(state.section == page ? Color.red : .clear).frame(height: 2)
+                            }.fixedSize(horizontal: true, vertical: false).padding(.horizontal, 4).padding(.top, 5).contentShape(Rectangle())
+                        }.buttonStyle(.plain).accessibilityAddTraits(state.section == page ? .isSelected : [])
+                    }
+                    Spacer(minLength: 0)
+                }.overlay(alignment: .bottom) { Rectangle().fill(Color.gray.opacity(0.16)).frame(height: 1).offset(y: 1) }
+                .onMoveCommand { direction in
+                    let pages = SettingsNavigation.pages(group)
+                    guard let index = pages.firstIndex(of: state.section), direction == .left || direction == .right else { return }
+                    state.section = pages[(index + (direction == .right ? 1 : -1) + pages.count) % pages.count]
+                }
             }
             if state.section == "Snippets" { SnippetsView(state: state) }
             else if state.section == "Vocabulary" { VocabularyView(state: state) }
@@ -262,16 +278,21 @@ struct ActivityView: View {
     }
     var integrations: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                VStack(alignment: .leading, spacing: 5) { Text("Stream Deck").font(.headline); Text("Dictate, hold to talk, copy recent, or open the app.").font(.caption).foregroundStyle(.secondary) }
+            HStack(spacing: 16) {
+                Image(systemName: "square.grid.3x3.fill").font(.system(size: 26)).foregroundStyle(.red).frame(width: 40, height: 40)
+                VStack(alignment: .leading, spacing: 5) { Text("Stream Deck").font(.headline); Text("Dictate from your Stream Deck.").font(.caption).foregroundStyle(.secondary) }
                 Spacer()
                 Button("Install plugin") { state.installStreamDeck() }.buttonStyle(.bordered)
-            }.padding(16).background(Color(white: 0.985), in: RoundedRectangle(cornerRadius: 12))
+            }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.15)))
+            Text("Stream Deck restarts briefly to install.").font(.caption).foregroundStyle(.secondary)
         }
     }
+    @State private var confirmStatsReset = false
     var system: some View {
         VStack(alignment: .leading, spacing: 18) {
             Toggle("Save history locally", isOn: $state.preferences.saveHistory).onChange(of: state.preferences.saveHistory) { _ in state.save() }
+            Toggle("Track usage locally", isOn: $state.preferences.trackUsage).onChange(of: state.preferences.trackUsage) { _ in state.save() }
+            Button(confirmStatsReset ? "Confirm reset" : "Reset usage") { if confirmStatsReset { state.resetStats(); confirmStatsReset = false } else { confirmStatsReset = true } }
             Button("Open data folder") { NSWorkspace.shared.open(state.root) }
             Text("No audio files are saved. Closing the window keeps the app in the menu bar.").font(.caption).foregroundStyle(.secondary)
         }

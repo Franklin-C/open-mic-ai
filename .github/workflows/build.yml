@@ -42,6 +42,9 @@ jobs:
       - name: Dictation bar, taskbar and settings tests
         shell: powershell
         run: ./windows/validation/RunBarChecks.ps1
+      - name: Statistics and taskbar command tests
+        shell: powershell
+        run: ./windows/validation/RunStatsChecks.ps1
       - name: Keyboard and mouse shortcut tests
         shell: powershell
         run: ./windows/validation/RunMouseShortcutChecks.ps1

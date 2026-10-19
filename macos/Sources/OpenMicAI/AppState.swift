@@ -10,6 +10,7 @@ import OpenMicCore
     @Published var snippets: [Snippet]
     @Published var vocabulary: [VocabularyWord]
     @Published var aiTokens: AiTokenTotals
+    @Published var statistics: UsageStatistics
     @Published var page = "Home"
     @Published var section = "Style"
     @Published var phase = "idle"
@@ -58,20 +59,25 @@ import OpenMicCore
         if ProcessInfo.processInfo.physicalMemory < 12 * 1_073_741_824 { recommended.speechModel = "ggml-base.en.bin"; recommended.languageModel = "Qwen3-1.7B-Q4_K_M.gguf" }
         var savedPreferences = read("preferences.json", recommended)
         savedPreferences.reworded = true
-        preferences = savedPreferences; history = read("history.json", []); snippets = read("snippets.json", []); vocabulary = read("vocabulary.json", [])
-        aiTokens = read("ai-tokens.json", AiTokenTotals())
+        let savedHistory: [HistoryEntry] = read("history.json", [])
+        let savedTokens = read("ai-tokens.json", AiTokenTotals())
+        preferences = savedPreferences; history = savedHistory; snippets = read("snippets.json", []); vocabulary = read("vocabulary.json", [])
+        aiTokens = savedTokens
+        statistics = read("statistics.json", UsageStatistics.seeded(history: savedHistory, tokens: savedTokens))
         models = try LocalModels(root: root)
         if let recent = history.first { recentText = recent.result.isEmpty ? recent.source : recent.result }
         models.status = { [weak self] in self?.status = $0 }
         models.tokensUsed = { [weak self] usage in
-            guard let self else { return }
+            guard let self, self.preferences.trackUsage else { return }
             self.aiTokens.add(usage); self.write("ai-tokens.json", self.aiTokens)
+            self.statistics.record(tokens: usage); self.write("statistics.json", self.statistics)
         }
         hotkey.pressed = { [weak self] in self?.shortcut() }
         hotkey.released = { [weak self] in self?.releaseShortcut() }
         do { try installShortcut(preferences) }
         catch { message = error.localizedDescription }
         streamDeck = try? StreamDeckBridge(root: root) { [weak self] command in self?.streamDeckCommand(command) ?? ["ok": false] }
+        write("statistics.json", statistics)
         Task { await loadModels(download: false) }
     }
     func write<T: Encodable>(_ name: String, _ value: T) {
@@ -83,6 +89,8 @@ import OpenMicCore
     func addHistory(source: String, result: String, action: String, seconds: Double = 0) {
         if preferences.saveHistory { history.insert(HistoryEntry(source: source, result: result, action: action, duration: seconds), at: 0); history = Array(history.prefix(200)); write("history.json", history) }
     }
+    func saveStats() { statistics.typingWpm = max(10, min(200, statistics.typingWpm)); write("statistics.json", statistics) }
+    func resetStats() { statistics = UsageStatistics(); statistics.detailsSince = UsageStatistics.key(Date()); aiTokens = AiTokenTotals(); saveStats(); write("ai-tokens.json", aiTokens) }
     func copy(_ text: String) { TextClipboard.set(text); message = "Copied" }
     func loadModels(download: Bool) async {
         guard !modelBusy, !importBusy, phase != "recording", phase != "ai", phase != "transcribing" else { return }
@@ -180,6 +188,11 @@ import OpenMicCore
     }
     func deliver(source: String, output: String, action: String, target: FocusTarget?, current: UUID, seconds: Double = 0) async {
         guard !Task.isCancelled, epoch == current else { return }
+        if preferences.trackUsage && action == "Dictate" && seconds > 0 && selection.isEmpty {
+            let application = target.flatMap { NSRunningApplication(processIdentifier: $0.pid)?.localizedName } ?? "Other"
+            statistics.record(source: source, seconds: seconds, app: application, style: recordingPreferences.style.rawValue)
+            write("statistics.json", statistics)
+        }
         result = output; recentText = output; addHistory(source: source, result: output, action: action, seconds: seconds)
         var pasted = false
         if action == "Dictate" || action == "Rewrite", let target { pasted = await target.paste(output, replacing: action == "Rewrite" || !selection.isEmpty) }

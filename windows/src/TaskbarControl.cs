@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -23,6 +23,8 @@ public sealed class TaskbarControl : Form {
     public bool IsProcessing {get;private set;}
     ITaskbarList3 shell;
     string signature;
+    bool liveWords=true,indicator=true,quickButtons=true;
+    public void Configure(Settings settings){liveWords=settings.TaskbarLiveWords;indicator=settings.TaskbarIndicator;quickButtons=settings.TaskbarButtons;signature=null;}
     DateTime retryAfter;
     readonly Icon mic=DrawIcon(0),stop=DrawIcon(1),copy=DrawIcon(2),app=Brand.CreateIcon(),working=DrawIcon(3);
     static readonly int taskbarCreated=RegisterWindowMessage("TaskbarButtonCreated");
@@ -42,16 +44,17 @@ public sealed class TaskbarControl : Form {
         PreviewTitle=IsRecording?"Listening":IsProcessing?pill.Caption:pill.ChoosingAction?"Selected text":pill.ResultReady?pill.Caption:status??"Ready";
         PreviewText=IsRecording||IsProcessing||pill.ChoosingAction||pill.ResultReady?pill.TranscriptText:pill.RecentText;
         if(String.IsNullOrWhiteSpace(PreviewText))PreviewText=IsRecording?"Speak…":IsProcessing?"Finishing your text…":"Click a text box, then Dictate.";
+        if(!liveWords)PreviewText=IsRecording?"Recording…":IsProcessing?"Adjusting with AI…":"Click the taskbar icon to open the app.";
         // Keep the latest words readable during a long recording.
         if(PreviewText.Length>500)PreviewText="… "+PreviewText.Substring(PreviewText.Length-500);
         string next=PreviewTitle+"\n"+PreviewText+"\n"+IsRecording+IsProcessing+CanToggle+CanCopy;
         Setup();if(signature==next)return;signature=next;Text="Open Mic AI · "+PreviewTitle;
         UpdateShell();DwmInvalidateIconicBitmaps(Handle);
     }
-    ThumbButton[] Buttons(){return new[]{Button(1,IsRecording?stop:mic,IsRecording?"Stop recording":"Dictate",CanToggle),Button(2,copy,"Copy recent transcription",CanCopy),Button(3,app,"Open app",true)};}
+    ThumbButton[] Buttons(){ThumbButton[] buttons=new[]{Button(1,IsRecording?stop:mic,IsRecording?"Stop recording":"Dictate",CanToggle),Button(2,copy,"Copy recent transcription",CanCopy),Button(3,app,"Open app",true)};if(!quickButtons)for(int i=0;i<buttons.Length;i++)buttons[i].Flags|=8;return buttons;}
     static ThumbButton Button(uint id,Icon icon,string tip,bool enabled){return new ThumbButton {Mask=14,Id=id,Icon=icon.Handle,Tip=tip,Flags=enabled?2u:3u};}
-    void UpdateShell(){if(!ButtonsReady||shell==null)return;try{shell.ThumbBarUpdateButtons(Handle,3,Buttons());shell.SetOverlayIcon(Handle,IsRecording?stop.Handle:IsProcessing?working.Handle:IntPtr.Zero,IsRecording?"Recording":IsProcessing?"Adjusting with AI":"Ready");string tip="Open Mic AI · "+PreviewTitle; shell.SetThumbnailTooltip(Handle,tip.Length>259?tip.Substring(0,259):tip);}catch(COMException){}}
-    public void InvokeCommand(int command){if(command==1&&CanToggle&&Toggle!=null)Toggle();else if(command==2&&CanCopy&&CopyRecent!=null)CopyRecent();else if(command==3&&OpenApp!=null)OpenApp();}
+    void UpdateShell(){if(!ButtonsReady||shell==null)return;try{shell.ThumbBarUpdateButtons(Handle,3,Buttons());shell.SetOverlayIcon(Handle,indicator?(IsRecording?stop.Handle:IsProcessing?working.Handle:IntPtr.Zero):IntPtr.Zero,IsRecording?"Recording":IsProcessing?"Adjusting with AI":"Ready");string tip="Open Mic AI · "+PreviewTitle; shell.SetThumbnailTooltip(Handle,tip.Length>259?tip.Substring(0,259):tip);}catch(COMException){}}
+    public void InvokeCommand(int command){if(!quickButtons)return;if(command==1&&CanToggle&&Toggle!=null)Toggle();else if(command==2&&CanCopy&&CopyRecent!=null)CopyRecent();else if(command==3&&OpenApp!=null)OpenApp();}
     protected override void WndProc(ref Message message){
         if(message.Msg==taskbarCreated){ButtonsReady=false;retryAfter=DateTime.MinValue;Setup();}
         if(message.Msg==0x111&&((message.WParam.ToInt64()>>16)&0xffff)==0x1800){InvokeCommand((int)(message.WParam.ToInt64()&0xffff));return;}
@@ -70,7 +73,7 @@ public sealed class TaskbarControl : Form {
             using(Font title=new Font("Segoe UI",11,FontStyle.Bold))g.DrawString(PreviewTitle??"Ready",title,Brushes.Black,new RectangleF(48,15,255,24));
             using(Font body=new Font("Segoe UI",11))using(Brush ink=new SolidBrush(Theme.Ink))using(StringFormat format=new StringFormat {Trimming=StringTrimming.EllipsisWord})g.DrawString(PreviewText??"",body,ink,new RectangleF(17,49,286,83),format);
             using(Pen line=new Pen(Theme.Line))g.DrawLine(line,17,142,303,142);
-            using(Font hint=new Font("Segoe UI",8.5f))using(Brush muted=new SolidBrush(Theme.Muted))g.DrawString(IsRecording?"Stop below to finish":"Dictate  ·  Copy recent  ·  Open app",hint,muted,new PointF(17,151));
+            using(Font hint=new Font("Segoe UI",8.5f))using(Brush muted=new SolidBrush(Theme.Muted))g.DrawString(!quickButtons?"Click the taskbar icon to open the app":IsRecording?"Stop below to finish":"Dictate  ·  Copy recent  ·  Open app",hint,muted,new PointF(17,151));
         }return bitmap;
     }
     void SendBitmap(bool live,int width,int height){using(Bitmap bitmap=RenderPreview(width,height)){

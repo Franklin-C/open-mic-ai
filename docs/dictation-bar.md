@@ -12,7 +12,7 @@ Open **Settings → Access → Dictation bar**. Changes save immediately.
 
 ## Windows taskbar control
 
-Turn on **Show taskbar control** in the same tab. It starts off.
+Open **Settings → Access → Taskbar**, immediately to the right of **Dictation bar**. Turn on **Show taskbar control**; it starts off.
 
 Hover over the Open Mic AI taskbar entry to see recognized words and three controls:
 
@@ -20,7 +20,11 @@ Hover over the Open Mic AI taskbar entry to see recognized words and three contr
 - **Copy recent** copies the latest result.
 - **Open app** opens the main window.
 
-The icon shows recording and AI activity. Words appear in the hover preview. These controls keep the editor focused so automatic paste can use the original text box. Closing the taskbar entry turns this option off; the app stays available in the tray.
+Click the taskbar icon to open the app. Independently toggle **Live words**, the **Recording indicator**, and **Quick buttons**. Recording buttons keep the editor focused so automatic paste can use the original text box. Closing the taskbar entry turns this option off; the app stays available in the tray.
+
+Under **Right-click shortcuts**, choose which app actions appear in the Windows Jump List: Dictate / Stop, Copy recent, Open app, Show dictation bar, Settings, and Quit. Changes save immediately. Windows manages its own Pin and Close entries. Quit closes the app, just like Quit in the tray.
+
+![Taskbar settings](images/taskbar-settings.png)
 
 App-provided preview content, rendered with synthetic text:
 
