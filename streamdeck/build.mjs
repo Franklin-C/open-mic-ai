@@ -18,6 +18,8 @@ for (const [name, body] of Object.entries(icons)) {
 }
 await copyFile('../windows/assets/open-mic-ai-ui.png', `${root}/images/plugin.png`);
 await copyFile('../windows/assets/open-mic-ai-ui.png', `${root}/images/plugin@2x.png`);
+const logo = (await readFile('../windows/assets/open-mic-ai-ui.png')).toString('base64');
+await writeFile(`${root}/images/app.svg`, `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" rx="20" fill="#fff"/><image href="data:image/png;base64,${logo}" x="26" y="8" width="92" height="92"/></svg>`);
 // PNG assets use their normal extension when setImage is called at runtime.
 await copyFile('../LICENSE', `${root}/LICENSE.txt`);
 let notices = '';

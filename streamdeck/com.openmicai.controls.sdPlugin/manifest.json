@@ -39,6 +39,7 @@
       "States": [
         {
           "Image": "images/mic",
+          "TitleColor": "#1f1f1f",
           "TitleAlignment": "bottom",
           "FontSize": 10
         }
@@ -56,6 +57,7 @@
       "States": [
         {
           "Image": "images/mic",
+          "TitleColor": "#1f1f1f",
           "TitleAlignment": "bottom",
           "FontSize": 10
         }
@@ -73,6 +75,7 @@
       "States": [
         {
           "Image": "images/copy",
+          "TitleColor": "#1f1f1f",
           "TitleAlignment": "bottom",
           "FontSize": 10
         }
@@ -89,6 +92,7 @@
       "States": [
         {
           "Image": "images/plugin",
+          "TitleColor": "#1f1f1f",
           "TitleAlignment": "bottom",
           "FontSize": 10
         }
@@ -105,6 +109,7 @@
       "States": [
         {
           "Image": "images/cancel",
+          "TitleColor": "#1f1f1f",
           "TitleAlignment": "bottom",
           "FontSize": 10
         }

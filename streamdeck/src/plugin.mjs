@@ -3,7 +3,7 @@ import { request, launch } from './bridge.mjs';
 
 export function keyPresentation(kind, state) {
   if (kind === 'copy') return { title: 'Copy', image: 'images/copy.svg' };
-  if (kind === 'open') return { title: 'Open app', image: 'images/plugin.png' };
+  if (kind === 'open') return { title: 'Open app', image: 'images/app.svg' };
   if (kind === 'cancel') return { title: 'Cancel', image: 'images/cancel.svg' };
   if (!state) return { title: 'Open app', image: 'images/mic.svg' };
   if (state.phase === 'recording') return { title: kind === 'hold' ? 'Release' : 'Stop', image: 'images/recording.svg' };

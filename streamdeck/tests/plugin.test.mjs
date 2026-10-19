@@ -57,7 +57,7 @@ test('packaged plugin registers and controls a local app through real SDK events
     assert.ok(messages.some(x => x.event === 'showOk' && x.context === 'copy'));
     assert.equal(stderr, '');
     assert.ok(!messages.some(x => x.event === 'showAlert'));
-    assert.ok(messages.some(x => x.event === 'setImage' && x.payload.image === 'images/plugin.png'));
+    assert.ok(messages.some(x => x.event === 'setImage' && x.payload.image === 'images/app.svg'));
   } finally {
     if (child && child.exitCode === null) { const exited = new Promise(resolve => child.once('exit', resolve)); child.kill(); await exited; }
     for (const client of ws.clients) client.terminate(); ws.close(); http.closeAllConnections(); await new Promise(resolve => http.close(resolve));
