@@ -13,9 +13,12 @@ namespace LocalFlow {
 public sealed class Settings {
     public string Shortcut="Ctrl + Shift + Space", Style="Keep my wording", Custom="", Vocabulary="";
     public string ActionShortcut="Ctrl + Shift + A",QuickAction="Choose action",TranslationLanguage="English";
+    public string ImageShortcut="Off";
     public string RecordingMode="Click to start / stop";
     public bool WindowsNotifications=false;
     public bool PolishReworded=true;
+    public bool EdgeRockFastWriting=true;
+    public string Decision="auto";
     public int Microphone=-1;
     public int BarX=int.MinValue,BarY=int.MinValue;
     public bool Rewrite=true;
@@ -53,6 +56,7 @@ public sealed class DictationSession {
     public string Vocabulary,Style,Custom,SelectedText,Cleanup="Light",RecordingMode="Click to start / stop",ActionName,ActionLanguage;
     public TextRules Rules;
     public bool Rewrite,PolishReworded;
+    public byte[] Image;
     public string Application="Other";
     public double RecordingSeconds;
     public readonly Stopwatch RecordingTime=new Stopwatch();
@@ -92,10 +96,13 @@ public sealed class FlowContext : ApplicationContext {
     readonly System.Windows.Forms.Timer health=new System.Windows.Forms.Timer {Interval=30000};
     DictationSession session;
     TextActionSession actionSession;
+    ImageQuestionWindow imageQuestions;
+    byte[] recentChatImage;string recentChatQuestion,recentChatAnswer;
+    byte[] selectedImage;IntPtr selectedImageTarget;
     CancellationTokenSource selectionProbe;
     bool pendingHoldReleased;
     readonly MediaImportController importer=new MediaImportController();
-    bool Busy {get{return session!=null||actionSession!=null||selectionProbe!=null||importer.Busy;}}
+    bool Busy {get{return session!=null||actionSession!=null||selectionProbe!=null||selectedImage!=null||importer.Busy||(imageQuestions!=null&&!imageQuestions.IsDisposed&&imageQuestions.IsBusy);}}
     string lastResult="",lastRaw="";
     bool exiting,booting;
     readonly AppCommandChannel commands;readonly bool shellIntegration;string taskbarMenuSignature,startupCommand;
@@ -110,6 +117,7 @@ public sealed class FlowContext : ApplicationContext {
         holdMouse=new HoldMouseInput(ui);holdMouse.CanStart=()=>!exiting&&!importer.Busy&&!ShortcutWindow.Capturing&&actionSession==null&&(session==null||!session.Stopped)&&models!=null&&models.Alive;
         holdMouse.Down=()=>{if(Hotkey.Mouse(settings.Shortcut)){Toggle();if(settings.RecordingMode=="Hold to talk")heldSession=session;}else if(session==null&&CanDictate()){Begin(false);heldSession=session;}};holdMouse.Up=()=>{if(selectionProbe!=null)pendingHoldReleased=true;DictationSession current=heldSession;heldSession=null;if(current!=null&&session==current&&!current.Stopped)Finish(current);};
         shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;
+        shortcut.RegisterImage(settings.ImageShortcut);settings.ImageShortcut=shortcut.ImageLabel??"Off";shortcut.ImageQuestion=OpenImageQuestion;pill.AskImage=AskSelectedImage;
         shortcut.Toggle=KeyboardToggle;shortcut.Released=KeyboardRelease;shortcut.Cancel=Cancel;pill.Cancel=Cancel;pill.CopyResult=Copy;pill.Release=()=>{if(selectionProbe!=null)pendingHoldReleased=true;if(session!=null&&!session.Stopped)Finish(session);};pill.RecordingMode=RecordingModes.Normalize(settings.RecordingMode);
         pill.TextAction=ChooseTextAction;pill.SpeakInstruction=SpeakInstruction;pill.TranslationLanguage=language=>{if(actionSession!=null&&!actionSession.Processing)actionSession.Language=language;};
         if(settings.BarX!=int.MinValue&&settings.BarY!=int.MinValue)pill.SetPosition(new Point(settings.BarX,settings.BarY));pill.PositionChanged=point=>{settings.BarX=point.X;settings.BarY=point.Y;SavePreferences();};pill.Vertical=settings.BarLayout=="Vertical";pill.Persistent=settings.ShowBar;pill.Start=Toggle;pill.History=ShowApp;pill.HideBar=()=>{settings.ShowBar=false;pill.Persistent=false;pill.Conceal();SavePreferences();};
@@ -154,14 +162,14 @@ public sealed class FlowContext : ApplicationContext {
         booting=true;
         try {
             if(specs==null)specs=await Task.Run(()=>ComputerSpecs.Detect());
-            ModelPair pair=ModelLibrary.Find(settings.Speech,settings.Text);
+            ModelPair pair=ModelLibrary.Find(settings.Speech,settings.Text,settings.Decision);
             if(pair==null||!ModelLibrary.Installed(root,pair)) {
                 if(models!=null){models.Dispose();models=null;}
                 SetStatus("Download models to get started");booting=false;
                 ui.Post(s=>OpenModels(),null);return;
             }
             if(models!=null)models.Dispose();models=new Models(root);models.Progress=t=>ui.Post(s=>SetStatus(t),null);
-            SetStatus("Loading local models");await models.Boot(settings.Speech,settings.Text);if(exiting)return;
+            SetStatus("Loading local models");await models.Boot(settings.Speech,settings.Text,settings.EdgeRockFastWriting,settings.Decision);if(exiting)return;
             // Subscribe after warm-up; counters describe the user's AI work.
             models.TokensUsed+=counts=>ui.Post(s=>{if(!exiting&&settings.SaveInsights)usage.RecordAiTokens(counts);},null);
             SetStatus("Ready · "+settings.Shortcut);
@@ -176,7 +184,7 @@ public sealed class FlowContext : ApplicationContext {
     bool Copy(string text){if(String.IsNullOrEmpty(text))return false;try{TextClipboard.SetText(text);return true;}catch(System.Runtime.InteropServices.ExternalException){if(pill.ResultReady){pill.Caption="Clipboard busy";pill.Invalidate();}else Notify("Clipboard busy. Try again.");return false;}}
     void SavePreferences(){try{settings.Save(root);}catch(Exception error){Notify("Could not save preferences: "+error.Message);}}
     void ConfigureStartup(){using(Microsoft.Win32.RegistryKey key=Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")){if(settings.LaunchAtLogin)key.SetValue("Open Mic AI","\""+Application.ExecutablePath+"\" --background");else key.DeleteValue("Open Mic AI",false);key.DeleteValue("LocalFlow",false);}}
-    void ApplySettings(Settings value){settings=value;shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;pill.RecordingMode=RecordingModes.Normalize(settings.RecordingMode);try{holdMouse.Configure(Hotkey.Mouse(settings.Shortcut)?settings.Shortcut:settings.HoldMouse);settings.Save(root);ConfigureStartup();}catch(Exception error){Notify("Could not apply settings: "+error.Message);}pill.Vertical=settings.BarLayout=="Vertical";pill.Persistent=settings.ShowBar;ConfigureTaskbar();if(!Busy){if(pill.Persistent)pill.ShowIdle();else pill.Conceal();}SetStatus(models!=null&&models.Alive?"Ready · "+settings.Shortcut:"Models not ready");}
+    void ApplySettings(Settings value){settings=value;shortcut.Register(settings.Shortcut);settings.Shortcut=shortcut.Label??settings.Shortcut;shortcut.RegisterImage(settings.ImageShortcut);settings.ImageShortcut=shortcut.ImageLabel??"Off";pill.RecordingMode=RecordingModes.Normalize(settings.RecordingMode);try{holdMouse.Configure(Hotkey.Mouse(settings.Shortcut)?settings.Shortcut:settings.HoldMouse);settings.Save(root);ConfigureStartup();}catch(Exception error){Notify("Could not apply settings: "+error.Message);}pill.Vertical=settings.BarLayout=="Vertical";pill.Persistent=settings.ShowBar;ConfigureTaskbar();if(!Busy){if(pill.Persistent)pill.ShowIdle();else pill.Conceal();}SetStatus(models!=null&&models.Alive?"Ready · "+settings.Shortcut:"Models not ready");}
     async void ExecuteTrayCommand(string action){if(action!="dictate"||Busy){ExecuteAppCommand(action);return;}await Task.Delay(80);if(exiting)return;if(!trayFocus.Restore()){Notify("Click a text box, then use your dictation shortcut.");return;}await Task.Delay(80);if(!exiting&&trayFocus.Matches)ExecuteAppCommand(action);}
     void ExecuteAppCommand(string action){
         if(exiting)return;
@@ -188,7 +196,7 @@ public sealed class FlowContext : ApplicationContext {
         if(settings.TaskbarControl){if(taskbar==null){taskbar=new TaskbarControl();taskbar.Toggle=()=>{if(session!=null||selectionProbe!=null||actionSession!=null)Toggle();else if(CanDictate())Begin(false,null,null,"Click to start / stop");};taskbar.OpenApp=ShowApp;taskbar.CopyRecent=()=>Copy(pill.RecentText);taskbar.HideControl=()=>{settings.TaskbarControl=false;ConfigureTaskbar();SavePreferences();};taskbar.Show();}taskbar.Configure(settings);taskbar.UpdateState(pill,Busy,status.Text);taskbarUpdate.Start();}
         else{taskbarUpdate.Stop();if(taskbar!=null){TaskbarControl old=taskbar;taskbar=null;old.Dispose();}}
     }
-    void EnsureHub(){if(hub!=null&&!hub.IsDisposed)return;hub=new HubWindow(history,personalization,usage,()=>settings,ApplySettings,CreateModelWindow,shortcut.Choices,shortcut.EditLabel,importer);hub.ShowInTaskbar=!settings.TaskbarControl;hub.FormClosed+=(s,e)=>hub=null;}
+    void EnsureHub(){if(hub!=null&&!hub.IsDisposed)return;hub=new HubWindow(history,personalization,usage,()=>settings,ApplySettings,CreateModelWindow,shortcut.Choices,shortcut.EditLabel,importer);hub.ImageQuestions=()=>{imageQuestions=new ImageQuestionWindow(()=>models,()=>!exiting&&!Busy&&!booting,()=>settings.Microphone);if(recentChatImage!=null){imageQuestions.UseExchange(recentChatImage,recentChatQuestion,recentChatAnswer);recentChatImage=null;recentChatQuestion=recentChatAnswer=null;}return imageQuestions;};hub.ShowInTaskbar=!settings.TaskbarControl;hub.FormClosed+=(s,e)=>hub=null;}
     [System.Runtime.InteropServices.DllImport("user32.dll")]static extern bool ShowWindow(IntPtr window,int command);
     void ShowApp(){if(exiting)return;EnsureHub();hub.SetStatus(status.Text);hub.Show();if(hub.WindowState==FormWindowState.Minimized)hub.WindowState=FormWindowState.Normal;ShowWindow(hub.Handle,5);hub.BringToFront();hub.Activate();}
     void OpenHub(string page){if(exiting)return;if(Busy){Notify("Finish or cancel the current action first.");return;}EnsureHub();hub.Navigate(page);ShowApp();}
@@ -196,12 +204,36 @@ public sealed class FlowContext : ApplicationContext {
     void SaveToHistory(DictationSession current,string transcript,string result){if(String.IsNullOrWhiteSpace(transcript))return;if(settings.SaveHistory)history.Add(transcript,result,current.SelectedText!=null?(current.ActionName=="Translate"?"Translate to "+current.ActionLanguage:current.ActionName=="Summarize"?"Summarize":"Voice edit"):current.Style,current.SelectedText);if(settings.SaveInsights&&current.SelectedText==null)usage.Record(transcript,String.IsNullOrEmpty(result)?transcript:result,current.RecordingSeconds,current.Application,DateTime.UtcNow,current.Style);}
     void OpenSettings(){OpenHub("Settings");}
     void OpenModels(){OpenHub("Models");}
-    ModelWindow CreateModelWindow(){ModelWindow window=new ModelWindow(root,settings,specs??ComputerSpecs.Detect());window.CanApply=()=>!Busy&&!booting;window.ApplyModels=async pair=>{settings.Speech=pair.Speech.Name;settings.Text=pair.Text.Name;SavePreferences();await BootModels();return models!=null&&models.Alive;};return window;}
+    ModelWindow CreateModelWindow(){ModelWindow window=new ModelWindow(root,settings,specs??ComputerSpecs.Detect());window.CanApply=()=>!Busy&&!booting;window.ApplyModels=async pair=>{settings.Speech=pair.Speech.Name;settings.Text=pair.Text.Name;settings.Decision=pair.DecisionChoice;settings.EdgeRockFastWriting=window.FastWriting;SavePreferences();await BootModels();return models!=null&&models.Alive;};return window;}
     static string ApplicationName(IntPtr window){try{uint id;Native.GetWindowThreadProcessId(window,out id);using(Process process=Process.GetProcessById((int)id))return process.ProcessName;}catch{return "Other";}}
-    bool CanDictate(){if(selectionProbe!=null)return false;if(importer.Busy){Notify("Finish or cancel the file import in History first.");return false;}if(actionSession!=null){Notify("Finish or cancel AI tools first.");return false;}if(models==null||!models.Alive){Notify(models==null?"Please download models from Settings first.":"Models are not ready. Open Settings → System → Models.");return false;}return true;}
+    bool CanDictate(){if(imageQuestions!=null&&!imageQuestions.IsDisposed&&imageQuestions.IsBusy){Notify("Finish the image question first.");return false;}if(selectionProbe!=null)return false;if(importer.Busy){Notify("Finish or cancel the file import in History first.");return false;}if(actionSession!=null){Notify("Finish or cancel AI tools first.");return false;}if(models==null||!models.Alive){Notify(models==null?"Please download models from Settings first.":"Models are not ready. Open Settings → System → Models.");return false;}return true;}
     void KeyboardToggle(){Toggle();if(settings.RecordingMode=="Hold to talk"&&session!=null&&!session.Stopped)keyboardHeld=session;}
     void KeyboardRelease(){if(selectionProbe!=null)pendingHoldReleased=true;DictationSession held=keyboardHeld;keyboardHeld=null;if(held!=null&&session==held&&!held.Stopped)Finish(held);}
-    void Toggle(){if(selectionProbe!=null){Cancel();return;}if(session!=null){if(!session.Stopped)Finish(session);return;}if(actionSession!=null){if(!actionSession.Processing)SpeakInstruction();return;}if(CanDictate())Begin(false);}
+    void Toggle(){if(imageQuestions!=null&&!imageQuestions.IsDisposed&&imageQuestions.Recording){FinishImageQuestion();return;}if(selectedImage!=null){AskSelectedImage();return;}if(selectionProbe!=null){Cancel();return;}if(session!=null){if(!session.Stopped)Finish(session);return;}if(actionSession!=null){if(!actionSession.Processing)SpeakInstruction();return;}if(CanDictate())Begin(false);}
+    async void FinishImageQuestion(){await imageQuestions.StopQuestion();}
+    void ShowSelectedImage(FocusTarget target){ShowSelectedImage(target.SelectedImage,target.Window);}
+    void ShowSelectedImage(byte[] image,IntPtr target){selectedImage=image;selectedImageTarget=target;shortcut.ListenForEscape(true);pill.ShowImageActions(target);SetStatus("Selected image · ask a question");}
+    void AskSelectedImage(){
+        byte[] image=selectedImage;IntPtr target=selectedImageTarget;if(image==null)return;selectedImage=null;shortcut.ListenForEscape(false);pill.Conceal();
+        if(models!=null&&models.Alive&&models.SupportsImages){Begin(false,null,null,null,image);return;}
+        OpenHub("Ask an image");if(imageQuestions==null||imageQuestions.IsDisposed)return;
+        try{imageQuestions.UseImage(image);imageQuestions.AnswerReady=answer=>{lastResult=answer;copyResult.Enabled=true;pill.ShowResult(answer,false,true,target,true,"Image answer");};imageQuestions.SpeakQuestion();}catch(Exception error){Notify(error.Message);}
+    }
+    async void OpenImageQuestion(){
+        if(selectedImage!=null){AskSelectedImage();return;}if(imageQuestions!=null&&!imageQuestions.IsDisposed&&imageQuestions.Recording){FinishImageQuestion();return;}
+        if(Busy||booting){Notify("Finish or cancel the current action first.");return;}
+        FocusTarget target=FocusTarget.Capture();if(target.IsPassword){Notify("Choose an image outside a password field.");return;}
+        CancellationTokenSource probe=new CancellationTokenSource();selectionProbe=probe;
+        try{await target.CaptureSelectionAsync(probe.Token);probe.Token.ThrowIfCancellationRequested();if(target.SelectedImage!=null){selectionProbe=null;ShowSelectedImage(target);return;}}
+        catch(OperationCanceledException){return;}catch(Exception error){Notify(error.Message);return;}
+        finally{if(selectionProbe==probe)selectionProbe=null;probe.Dispose();}
+        using(CancellationTokenSource region=new CancellationTokenSource()){
+            selectionProbe=region;
+            try{byte[] image=await SelectedImageData.CaptureRegion(region.Token,hub!=null&&Native.GetForegroundWindow()==hub.Handle?hub:null);region.Token.ThrowIfCancellationRequested();if(image!=null)ShowSelectedImage(image,target.Window);}
+            catch(OperationCanceledException){}catch(Exception error){Notify(error.Message);}
+            finally{if(selectionProbe==region)selectionProbe=null;}
+        }
+    }
     void ToggleEdit(){if(session!=null){if(!session.Stopped)Finish(session);return;}if(CanDictate())Begin(true);}
     async void ToggleTextActions() {
         if(actionSession!=null){Cancel();return;}if(session!=null){Notify("Finish dictation first.");return;}if(!CanDictate())return;
@@ -209,7 +241,8 @@ public sealed class FlowContext : ApplicationContext {
         CancellationTokenSource probe=new CancellationTokenSource();selectionProbe=probe;
         try {string source=await target.CaptureSelectionAsync(probe.Token);probe.Token.ThrowIfCancellationRequested();
             if(!await target.MatchesCurrentAsync(probe.Token)){Notify("The focused text box changed. Try again.");return;}
-            if(String.IsNullOrWhiteSpace(source)){Notify("Select text first, then press your shortcut.");return;}
+            if(target.SelectedImage!=null){ShowSelectedImage(target);return;}
+            if(String.IsNullOrWhiteSpace(source)){Notify("Select text or an image first, then press your shortcut.");return;}
             if(source.Length>9000){Notify("Select up to 9,000 characters at a time.");return;}
             ShowSelectedActions(target,source);
         }catch(OperationCanceledException){}catch(Exception error){Notify(error.Message);}
@@ -246,23 +279,26 @@ public sealed class FlowContext : ApplicationContext {
         }
         RunTextAction(action);
     }
-    async void Begin(bool edit,FocusTarget captured=null,string capturedSelection=null,string recordingMode=null) {
+    async void Begin(bool edit,FocusTarget captured=null,string capturedSelection=null,string recordingMode=null,byte[] image=null) {
         if(selectionProbe!=null)return;
         CancellationTokenSource probe=new CancellationTokenSource();selectionProbe=probe;pendingHoldReleased=false;
         TextRules rules=personalization.Snapshot();FocusTarget target=captured??FocusTarget.Capture();string application=ApplicationName(target.Window);AppStyle style=StyleRouting.Resolve(settings,application);DictationSession current=new DictationSession {Target=target,Application=application,Vocabulary=rules.Guidance(settings.Vocabulary),Style=style.Style,Custom=style.Custom,Rewrite=style.Cleanup!="None"&&style.Style!="Original transcript",Cleanup=style.Cleanup,PolishReworded=style.PolishReworded,Rules=rules,RecordingMode=RecordingModes.Normalize(recordingMode??settings.RecordingMode)};
         try {
             if(current.Target.IsPassword){Notify("Choose a text field outside a password box.");return;}
-            string selection=capturedSelection??await current.Target.CaptureSelectionAsync(probe.Token);
+            string selection=image!=null?null:capturedSelection??await current.Target.CaptureSelectionAsync(probe.Token);
             probe.Token.ThrowIfCancellationRequested();if(exiting)return;
             if(!await target.MatchesCurrentAsync(probe.Token)){Notify("The focused text box changed. Try again.");return;}
-            if(!String.IsNullOrWhiteSpace(selection)){if(selection.Length>9000){Notify("Select up to 9,000 characters.");return;}current.SelectedText=selection;}else if(edit){Notify("Select some text, then speak an instruction.");return;}
+            current.Image=image??target.SelectedImage;
+            if(current.Image==null&&target.ImageSelectionDetected){current.Image=await SelectedImageData.CaptureRegion(probe.Token,hub!=null&&Native.GetForegroundWindow()==hub.Handle?hub:null);probe.Token.ThrowIfCancellationRequested();if(current.Image==null||exiting)return;current.RecordingMode="Click to start / stop";}
+            if(current.Image!=null&&!models.SupportsImages){ShowSelectedImage(current.Image,target.Window);return;}
+            if(current.Image==null){if(!String.IsNullOrWhiteSpace(selection)){if(selection.Length>9000){Notify("Select up to 9,000 characters.");return;}current.SelectedText=selection;}else if(edit){Notify("Select some text, then speak an instruction.");return;}}
             current.Segments.Submit=pcm=>current.AddPending(Recognize(current,pcm));
             current.Mic=new Microphone(settings.Microphone);current.Mic.Audio=current.Segments.Push;
             if(settings.Sounds)System.Media.SystemSounds.Beep.Play();
             if(settings.MutePlayback)current.Playback=new PlaybackMute();
             session=current; current.Mic.Start();current.RecordingTime.Start();
             if(current.RecordingMode=="Hold to talk"){if(recordingMode==null)keyboardHeld=heldSession=current;if(pendingHoldReleased){Finish(current);return;}}
-            shortcut.ListenForEscape(true);if(current.SelectedText!=null)pill.ShowVoiceInstruction(current.SelectedText,current.Target.Window);else{pill.Prepare("Listening",true);pill.Place(current.Target.Window);pill.Reveal();}SetStatus(current.RecordingMode=="Hold to talk"?"Listening · release to finish":current.RecordingMode=="Automatic"?"Listening · pauses finish recording":"Listening · press again to finish");
+            shortcut.ListenForEscape(true);if(current.Image!=null)pill.ShowImageVoiceInstruction(current.Target.Window);else if(current.SelectedText!=null)pill.ShowVoiceInstruction(current.SelectedText,current.Target.Window);else{pill.Prepare("Listening",true);pill.Place(current.Target.Window);pill.Reveal();}SetStatus(current.RecordingMode=="Hold to talk"?"Listening · release to finish":current.RecordingMode=="Automatic"?"Listening · pauses finish recording":"Listening · press again to finish");
         } catch(OperationCanceledException){}catch(Exception e){current.Cancel.Cancel();if(current.Mic!=null)current.Mic.Dispose();if(current.Playback!=null)current.Playback.Dispose();session=null;Notify(e.Message);}
         finally {if(selectionProbe==probe)selectionProbe=null;probe.Dispose();if(session!=current){current.Cancel.Dispose();current.PreviewCancel.Dispose();}}
     }
@@ -272,20 +308,22 @@ public sealed class FlowContext : ApplicationContext {
     async void Finish(DictationSession current) {
         current.Stop();if(settings.Sounds)System.Media.SystemSounds.Beep.Play();pill.ShowProcessing(current.Rewrite||current.SelectedText!=null);SetStatus("Processing");
         Stopwatch watch=Stopwatch.StartNew();
-        string recognized="",readyText=null;bool saved=false,pasted=false,noSpeech=false,cardOutput=false;
+        string recognized="",readyText=null;bool saved=false,pasted=false,noSpeech=false,cardOutput=current.Image!=null;
         try {
             string[] parts=await Task.WhenAll(current.PendingSnapshot());current.Cancel.Token.ThrowIfCancellationRequested();
             string text=String.Join(" ",parts.Where(p=>!String.IsNullOrWhiteSpace(p))).Trim();
             if(text.Length==0){noSpeech=true;return;}
             lastRaw=text;copyRaw.Enabled=true;recognized=text;pill.UpdateTranscript(text);
-            TextRules rules=current.Rules??new TextRules(new PersonalData());PreparedDictation prepared=current.SelectedText==null?rules.Prepare(text):null;
+            TextRules rules=current.Rules??new TextRules(new PersonalData());PreparedDictation prepared=current.SelectedText==null&&current.Image==null?rules.Prepare(text):null;
             string output;
-            if(current.SelectedText!=null){SpokenAction action=SpokenAction.Parse(text,settings.TranslationLanguage);current.ActionName=action.Action;current.ActionLanguage=action.Language;cardOutput=action.ShowsCard;pill.ShowActionProcessing(action.Action,text);if(action.Action=="Dictate"){prepared=rules.Prepare(text);output=current.Rewrite?await models.Rewrite(prepared.Text,current.Style,current.Custom,current.Cancel.Token,current.Vocabulary,current.Cleanup,current.PolishReworded):prepared.Text;}else output=action.Action=="Rewrite"?await models.EditSelection(current.SelectedText,text,current.Cancel.Token,current.Vocabulary):await models.TransformSelection(current.SelectedText,action.Action,current.Style,current.Custom,action.Language,current.Cancel.Token,action.Instruction);}
+            if(current.Image!=null){pill.Caption="Reading image";output=await models.AskImage(current.Image,text,current.Cancel.Token);}
+            else if(current.SelectedText!=null){SpokenAction action=SpokenAction.Parse(text,settings.TranslationLanguage);current.ActionName=action.Action;current.ActionLanguage=action.Language;cardOutput=action.ShowsCard;pill.ShowActionProcessing(action.Action,text);if(action.Action=="Dictate"){prepared=rules.Prepare(text);output=current.Rewrite?await models.Rewrite(prepared.Text,current.Style,current.Custom,current.Cancel.Token,current.Vocabulary,current.Cleanup,current.PolishReworded):prepared.Text;}else output=action.Action=="Rewrite"?await models.EditSelection(current.SelectedText,text,current.Cancel.Token,current.Vocabulary):await models.TransformSelection(current.SelectedText,action.Action,current.Style,current.Custom,action.Language,current.Cancel.Token,action.Instruction);}
             else output=current.Rewrite?await models.Rewrite(prepared.Text,current.Style,current.Custom,current.Cancel.Token,current.Vocabulary,current.Cleanup,current.PolishReworded):prepared.Text;
             if(prepared!=null)output=rules.Finish(output,prepared);
             current.Cancel.Token.ThrowIfCancellationRequested();if(exiting)return;
             lastResult=output;copyResult.Enabled=true;readyText=output;
-            SaveToHistory(current,text,output);saved=true;if(cardOutput)return;
+            if(current.Image!=null){if(imageQuestions!=null&&!imageQuestions.IsDisposed){imageQuestions.UseExchange(current.Image,text,output);}else{recentChatImage=(byte[])current.Image.Clone();recentChatQuestion=text;recentChatAnswer=output;}}
+            if(current.Image==null)SaveToHistory(current,text,output);saved=true;if(cardOutput)return;
             // Let the user release the shortcut before sending Ctrl+V.
             for(int i=0;i<100&&Native.ModifiersDown();i++)await Task.Delay(20,current.Cancel.Token);
             if(Native.ModifiersDown()||!await current.Target.MatchesCurrentAsync(current.Cancel.Token)||(current.SelectedText!=null&&!current.Target.SelectionWritable)) {return;}
@@ -295,9 +333,9 @@ public sealed class FlowContext : ApplicationContext {
         } catch(OperationCanceledException){if(!current.Cancel.IsCancellationRequested&&!exiting)Notify("The local rewrite timed out. Use Copy recent from the tray.");}
         catch(Exception e){if(!exiting)Notify(e.Message+(!String.IsNullOrEmpty(lastRaw)?" Use Copy recent from the tray.":""));}
         finally {
-            if(!saved&&!current.Cancel.IsCancellationRequested&&!exiting)SaveToHistory(current,recognized,"");
+            if(!saved&&current.Image==null&&!current.Cancel.IsCancellationRequested&&!exiting)SaveToHistory(current,recognized,"");
             if(session==current){session=null;shortcut.ListenForEscape(false);if(!exiting)SetStatus("Ready · "+settings.Shortcut);
-                if(!exiting&&!current.Cancel.IsCancellationRequested&&!String.IsNullOrWhiteSpace(readyText??recognized)){if(pasted)pill.CompletePaste(readyText??recognized);else pill.ShowResult(readyText??recognized,readyText==null,true,current.Target.Window,cardOutput,current.ActionName=="Translate"?"Translation · "+current.ActionLanguage:current.ActionName=="Summarize"?"Summary":null);}else if(noSpeech&&!exiting&&!current.Cancel.IsCancellationRequested)pill.ShowNotice("No speech detected","Try another microphone in Settings.");else pill.Conceal();
+                if(!exiting&&!current.Cancel.IsCancellationRequested&&!String.IsNullOrWhiteSpace(readyText??recognized)){if(pasted)pill.CompletePaste(readyText??recognized);else pill.ShowResult(readyText??recognized,readyText==null,true,current.Target.Window,cardOutput,current.Image!=null?"Image answer":current.ActionName=="Translate"?"Translation · "+current.ActionLanguage:current.ActionName=="Summarize"?"Summary":null);}else if(noSpeech&&!exiting&&!current.Cancel.IsCancellationRequested)pill.ShowNotice("No speech detected","Try another microphone in Settings.");else pill.Conceal();
             }
         }
     }
@@ -320,7 +358,7 @@ public sealed class FlowContext : ApplicationContext {
         }
     }
     [System.Runtime.InteropServices.DllImport("user32.dll",EntryPoint="GetClipboardSequenceNumber")]static extern int ClipboardSequence();
-    void Cancel(){bool probing=selectionProbe!=null;if(probing)selectionProbe.Cancel();TextActionSession action=actionSession;if(action!=null){actionSession=null;action.Cancel.Cancel();if(!action.Processing)action.Dispose();}DictationSession current=session;if(current!=null){current.Cancel.Cancel();current.Stop();session=null;}if(action==null&&current==null&&!probing)return;shortcut.ListenForEscape(false);pill.Conceal();SetStatus("Ready · "+settings.Shortcut);}
+    void Cancel(){bool image=selectedImage!=null||(imageQuestions!=null&&!imageQuestions.IsDisposed&&imageQuestions.IsBusy);selectedImage=null;if(imageQuestions!=null&&!imageQuestions.IsDisposed&&imageQuestions.IsBusy)imageQuestions.CancelWork();bool probing=selectionProbe!=null;if(probing)selectionProbe.Cancel();TextActionSession action=actionSession;if(action!=null){actionSession=null;action.Cancel.Cancel();if(!action.Processing)action.Dispose();}DictationSession current=session;if(current!=null){current.Cancel.Cancel();current.Stop();session=null;}if(action==null&&current==null&&!probing&&!image)return;shortcut.ListenForEscape(false);pill.Conceal();SetStatus("Ready · "+settings.Shortcut);}
     protected override void ExitThreadCore(){exiting=true;if(commands!=null)commands.Dispose();taskbarUpdate.Dispose();if(taskbar!=null)taskbar.Dispose();if(streamDeck!=null)streamDeck.Dispose();importer.Cancel();if(reopenWait!=null)reopenWait.Unregister(null);pill.Persistent=false;Cancel();holdMouse.Dispose();if(hub!=null)hub.Close();history.FlushAsync().GetAwaiter().GetResult();personalization.FlushAsync().GetAwaiter().GetResult();usage.FlushAsync().GetAwaiter().GetResult();level.Dispose();health.Dispose();Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;shortcut.Dispose();pill.Dispose();if(tray.ContextMenuStrip!=null)tray.ContextMenuStrip.Dispose();status.Dispose();copyResult.Dispose();copyRaw.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();if(models!=null)models.Dispose();base.ExitThreadCore();}
 }
 

@@ -13,6 +13,9 @@ public sealed class Pill : Form {
     string selectedPreview;
     public Action<string> TextAction;
     public Action SpeakInstruction;public Action<string> TranslationLanguage;
+    public Action AskImage;
+    public bool ChoosingImage {get;private set;}
+    readonly Button imageAction=Theme.Button("Ask about image",true);
     bool choosingLanguage;
     string actionLanguage,actionStyle;
     public Rectangle ActionBounds(int index){return new Rectangle(28+index*112,InstructionRecording?150:104,104,32);}
@@ -45,7 +48,7 @@ public sealed class Pill : Form {
     readonly Timer animation=new Timer {Interval=50},dismiss=new Timer();
     int frame;bool pressed,dragging,suppressClick;Point dragStart,origin;
     Rectangle CopyBounds {get{return new Rectangle(Width-108,8,72,27);}}
-    public Pill(){FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;BackColor=Color.White;ForeColor=Theme.Ink;Size=new Size(204,38);DoubleBuffered=true;Controls.Add(resultReader);
+    public Pill(){FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;BackColor=Color.White;ForeColor=Theme.Ink;Size=new Size(204,38);DoubleBuffered=true;Controls.Add(resultReader);imageAction.Visible=false;imageAction.AccessibleName="Ask about image";imageAction.SetBounds(28,88,192,36);imageAction.Click+=(s,e)=>{if(ChoosingImage&&Recording&&Start!=null)Start();else if(ChoosingImage&&AskImage!=null)AskImage();};Controls.Add(imageAction);
         animation.Tick+=(s,e)=>{if(!Recording&&!Processing){animation.Stop();return;}frame++;Invalidate();};dismiss.Tick+=(s,e)=>Conceal();
         MouseDown+=(s,e)=>{if(e.Button!=MouseButtons.Left)return;dictatePressed=Idle&&DictateBounds.Contains(e.Location);if(dictatePressed)Invalidate();if(RecordingMode=="Hold to talk"&&((DictateBounds.Contains(e.Location)&&Idle)||(ChoosingAction&&VoiceBounds.Contains(e.Location)))){holding=true;suppressClick=true;Capture=true;if(ChoosingAction){if(SpeakInstruction!=null)SpeakInstruction();}else if(Start!=null)Start();return;}pressed=DragBounds.Contains(e.Location);dragging=false;dragStart=PointToScreen(e.Location);origin=Location;if(pressed)Capture=true;};
         MouseLeave+=(s,e)=>{dictatePressed=false;hoverLocation=new Point(-1,-1);hints.SetToolTip(this,"");Invalidate();};MouseMove+=(s,e)=>{UpdateHover(e.Location);if(pressed){Point screen=PointToScreen(e.Location);int dx=screen.X-dragStart.X,dy=screen.Y-dragStart.Y;if(Math.Abs(dx)>5||Math.Abs(dy)>5)dragging=true;if(dragging){Location=Clamp(new Point(origin.X+dx,origin.Y+dy));Cursor=Cursors.SizeAll;}}else Cursor=DragBounds.Contains(e.Location)?Cursors.SizeAll:Cursors.Hand;};
@@ -61,8 +64,10 @@ public sealed class Pill : Form {
     Point Clamp(Point point){Rectangle area=Screen.FromPoint(point).WorkingArea;return new Point(Math.Max(area.Left,Math.Min(point.X,area.Right-Width)),Math.Max(area.Top,Math.Min(point.Y,area.Bottom-Height)));}
     void ResizeBar(Size size){Point anchored=new Point(Left+(Width-size.Width)/2,Top+Height-size.Height);Size=size;if(Pinned)Location=Clamp(anchored);}
     public void Reveal(){if(!Visible)Show();SetWindowPos(Handle,new IntPtr(-1),Left,Top,Width,Height,0x0010|0x0040);if(Recording||Processing)animation.Start();}
-    public void Conceal(){dismiss.Stop();animation.Stop();ChoosingAction=false;ResultReady=false;ResultText="";TranscriptText="";resultReader.Visible=false;resultReader.Text="";Processing=Recording=false;if(Persistent){ShowIdle();return;}Idle=false;Hide();}
-    public void Prepare(string caption,bool recording){dictatePressed=false;hints.SetToolTip(this,"");dismiss.Stop();animation.Stop();ChoosingAction=false;InstructionRecording=false;selectedPreview="";AccessibleName="Open Mic AI";choosingLanguage=false;Idle=false;Processing=false;ResultReady=false;ResultText="";TranscriptText="";resultReader.Visible=false;resultReader.Text="";Caption=caption;Recording=recording;ResizeBar(recording?new Size(360,90):new Size(252,40));Invalidate();}
+    public void Conceal(){dismiss.Stop();animation.Stop();ChoosingImage=false;imageAction.Visible=false;ChoosingAction=false;ResultReady=false;ResultText="";TranscriptText="";resultReader.Visible=false;resultReader.Text="";Processing=Recording=false;if(Persistent){ShowIdle();return;}Idle=false;Hide();}
+    public void Prepare(string caption,bool recording){ChoosingImage=false;imageAction.Visible=false;dictatePressed=false;hints.SetToolTip(this,"");dismiss.Stop();animation.Stop();ChoosingAction=false;InstructionRecording=false;selectedPreview="";AccessibleName="Open Mic AI";choosingLanguage=false;Idle=false;Processing=false;ResultReady=false;ResultText="";TranscriptText="";resultReader.Visible=false;resultReader.Text="";Caption=caption;Recording=recording;ResizeBar(recording?new Size(360,90):new Size(252,40));Invalidate();}
+    public void ShowImageActions(IntPtr target){Prepare("Selected image",false);ChoosingImage=true;TranscriptText="Ask a question about the selected image.";ResizeBar(new Size(360,140));imageAction.Visible=true;Place(target);AccessibleName="Selected image. Ask about image. Escape to cancel.";Reveal();Invalidate();}
+    public void ShowImageVoiceInstruction(IntPtr target){Prepare("Ask about image",true);ChoosingImage=true;TranscriptText="Speak your question. Press the same shortcut again to ask.";ResizeBar(new Size(388,140));imageAction.Visible=true;Place(target);AccessibleName="Selected image. Recording an image question. Press the dictation shortcut again to ask. Escape cancels.";Reveal();Invalidate();}
     public void ShowIdle(){Prepare("Ready",false);Idle=true;AccessibleName="Dictate, Copy recent transcription, Open app";ResizeBar(vertical?new Size(44,166):new Size(204,38));Place(Native.GetForegroundWindow());Reveal();}
     public void ShowProcessing(bool rewrite){string text=TranscriptText;Prepare(rewrite?"Polishing":"Transcribing",false);Processing=true;TranscriptText=text;ResizeBar(new Size(360,90));Reveal();Invalidate();}
     public void ShowTextActions(string source,string style,string language,IntPtr target){Prepare("Selected text",false);ChoosingAction=true;TranscriptText=source;actionStyle=style=="Smart formatting"?"Polish":style=="Custom"?"Custom":"Clean up";actionLanguage=language;ResizeBar(new Size(388,186));Place(target);AccessibleName="Selected text: Rewrite, Translate, Summarize, Speak instruction. Escape to cancel.";Reveal();Invalidate();}

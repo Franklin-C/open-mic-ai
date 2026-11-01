@@ -1,0 +1,126 @@
+{
+  "repository": "rockmatrix-ai/EdgeRock",
+  "revision": "f8c04fa0ddf8fab1aefdd4726535a8c3fa305972",
+  "files": [
+    {
+      "name": "LICENSE",
+      "bytes": 18033,
+      "sha256": "cccc3edd0aec5e52066484425d4dd57f70b6df8df574086d9c29d1eff79094eb"
+    },
+    {
+      "name": "LICENSE-CODE",
+      "bytes": 11388,
+      "sha256": "6723dc426b62fedebfdcad8106769c2b8ac761c8a4c9eea5e3a64ffe1e768252"
+    },
+    {
+      "name": "NOTICE",
+      "bytes": 3607,
+      "sha256": "b828712596b766f4f10e61f91b1b58479be16fc80474bb8ee1a6e0d521a9ab93"
+    },
+    {
+      "name": "config.json",
+      "bytes": 2615,
+      "sha256": "7984b4f381da308726718461df963a12ae9f6157adfdb2657381441c1a23b203"
+    },
+    {
+      "name": "configuration_edgerock.py",
+      "bytes": 945,
+      "sha256": "dd763ef277f04bee2692b78e72dd32032804345ffad2245de68e869970e2c745"
+    },
+    {
+      "name": "generation_config.json",
+      "bytes": 120,
+      "sha256": "c349ec0761c9ff74840a7f3fa60c936ad8397a7e276e3573556ac5091873aa23"
+    },
+    {
+      "name": "model-00001-of-00003.safetensors",
+      "bytes": 3987011888,
+      "sha256": "4e5571399b495415760cde5a7ade7acbb6dcf3a855c563f8680874b4eca9b832"
+    },
+    {
+      "name": "model-00002-of-00003.safetensors",
+      "bytes": 3968605928,
+      "sha256": "e341f6983f9375b30ad8fb48f22595094a3164e082bab2ba5ef9546337d219ed"
+    },
+    {
+      "name": "model-00003-of-00003.safetensors",
+      "bytes": 1200568336,
+      "sha256": "6db343c7545739143189b303052e4e0092bef3bd673c2be7c2614d50cde37cd5"
+    },
+    {
+      "name": "model.safetensors.index.json",
+      "bytes": 45525,
+      "sha256": "40393a8df89e81b902f9b838c18da0916a423cf740789dc068f7a29d43d5eefd"
+    },
+    {
+      "name": "modeling_edgerock.py",
+      "bytes": 67889,
+      "sha256": "0e9a2ae7cc3ca20dc0d58b59ed2081052497817ece86af05b240c5a0ee2aa01e"
+    },
+    {
+      "name": "runtime/chat_template.jinja",
+      "bytes": 217,
+      "sha256": "331efb72abd591b0292ac2d75c8d94a2a1dcd14be725979779b50b2602ceeb4f"
+    },
+    {
+      "name": "runtime/inference.py",
+      "bytes": 21394,
+      "sha256": "ed226cc2455e0d81ffe3275d69d21871a4601b2679e0e5cb05b0b527ffbca5d3"
+    },
+    {
+      "name": "runtime/vision.py",
+      "bytes": 5549,
+      "sha256": "ad2c7b9a1d552c9494fa04e538aaa51db09d20bc899743af56ccc2469aafb245"
+    },
+    {
+      "name": "tokenizer.json",
+      "bytes": 19989325,
+      "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+    },
+    {
+      "name": "tokenizer_config.json",
+      "bytes": 1123,
+      "sha256": "bee8eba30f0eb4af73c0fe2cd06d0f89b657d7819941c438157ec42f7c80ea87"
+    },
+    {
+      "name": "vision/chat_template.jinja",
+      "bytes": 7756,
+      "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+    },
+    {
+      "name": "vision/config.json",
+      "bytes": 3161,
+      "sha256": "ddc63e1c717afa86c865bb5e01313d89d72bb53b97ad4a8a03ba8510c0621670"
+    },
+    {
+      "name": "vision/model.safetensors",
+      "bytes": 667057584,
+      "sha256": "e220772d94425aeaf529c3403e37112c05f4b046f574ab830b54f507444d7086"
+    },
+    {
+      "name": "vision/preprocessor_config.json",
+      "bytes": 390,
+      "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+    },
+    {
+      "name": "vision/tokenizer.json",
+      "bytes": 12807982,
+      "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+    },
+    {
+      "name": "vision/tokenizer_config.json",
+      "bytes": 16710,
+      "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+    },
+    {
+      "name": "vision/video_preprocessor_config.json",
+      "bytes": 385,
+      "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+    },
+    {
+      "name": "wheels/transformers-5.7.0.dev0-py3-none-any.whl",
+      "bytes": 11509186,
+      "sha256": "452e59dade6c4b9e767b85897e33cfc2d3b09c987d8ae84e5ee014f2ebb8b037"
+    }
+  ]
+}

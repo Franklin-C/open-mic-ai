@@ -39,6 +39,23 @@ jobs:
       - name: Word guards and bounded repair tests
         shell: powershell
         run: ./windows/validation/RunCoreChecks.ps1
+      - name: EdgeRock and image question client checks
+        shell: powershell
+        run: ./windows/validation/RunEdgeRockChecks.ps1
+      - name: Chat conversation and decision role checks
+        shell: powershell
+        run: ./windows/validation/RunChatChecks.ps1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: EdgeRock adapter protocol checks (no model weights)
+        shell: powershell
+        run: |
+          python -m pip install "Pillow>=12.1.1" "jsonschema>=4.23" "lm-format-enforcer==0.11.3"
+          python -m unittest discover -s windows/edgerock -p test_server.py
+      - name: Decision adapter protocol checks (no model weights)
+        shell: powershell
+        run: python -m unittest discover -s windows/decisions -p test_server.py
       - name: Dictation bar, taskbar and settings tests
         shell: powershell
         run: ./windows/validation/RunBarChecks.ps1

@@ -107,6 +107,8 @@ public sealed class FocusTarget {
     bool nativeEditor;
     public bool IsPassword;
     public bool SelectionWritable;
+    public byte[] SelectedImage {get;private set;}
+    public bool ImageSelectionDetected {get;private set;}
     int selectionStart=-1,selectionEnd=-1;
     string selectedText;
     System.Windows.Automation.Text.TextPatternRange selectedRange;
@@ -182,7 +184,8 @@ public sealed class FocusTarget {
     public async Task<string> CaptureSelectionAsync(CancellationToken cancel) {
         if(!await MatchesCurrentAsync(cancel))throw new InvalidOperationException("The focused text box changed. Try again.");
         string text=CaptureSelection();
-        if(text!=null)return text;
+        ImageSelectionDetected=ImageSelectionHint(text);
+        if(text!=null&&!ImageSelectionDetected)return text;
         text=await CopySelection(cancel);
         if(!String.IsNullOrWhiteSpace(text)){selectedText=text;clipboardSelection=true;SelectionWritable=true;}
         return text;
@@ -195,9 +198,10 @@ public sealed class FocusTarget {
     public async Task<bool> DictationTargetMatchesAsync(CancellationToken cancel){
         if(!await MatchesCurrentAsync(cancel))return false;
         if(selectedText!=null)return selectedText.Length==0&&SelectionMatches();
-        return String.IsNullOrWhiteSpace(await CopySelection(cancel));
+        return String.IsNullOrWhiteSpace(await CopySelection(cancel))&&SelectedImage==null&&!ImageSelectionDetected;
     }
     async Task<string> CopySelection(CancellationToken cancel) {
+        SelectedImage=null;
         if(IsPassword||!await MatchesCurrentAsync(cancel))return null;
         cancel.ThrowIfCancellationRequested();
         if(!await MatchesCurrentAsync(cancel))throw new InvalidOperationException("The focused text box changed. Try again.");
@@ -210,11 +214,23 @@ public sealed class FocusTarget {
                 if(Native.ClipboardSequence()==before)continue;
                 copied=Native.ClipboardSequence();
                 string text=Clipboard.ContainsText()?Clipboard.GetText():null;
+                IDataObject data=Clipboard.GetDataObject();bool imageFragment=SelectedImageData.IsImageFragment(data);
+                if(String.IsNullOrWhiteSpace((text??"").Replace("\ufffc",""))||imageFragment){SelectedImage=SelectedImageData.FromClipboard(data);ImageSelectionDetected=ImageSelectionDetected||SelectedImage!=null||imageFragment;}
                 cancel.ThrowIfCancellationRequested();
                 return text;
             }
             cancel.ThrowIfCancellationRequested();return null; // Ctrl+C with a caret and no highlight leaves it unchanged.
         } finally {if(copied!=0&&Native.ClipboardSequence()==copied)ClipboardBackup.Restore(previous);}
+    }
+    bool ImageSelectionHint(string text){
+        if((text??"").IndexOf('\ufffc')>=0&&String.IsNullOrWhiteSpace(text.Replace("\ufffc","")))return true;
+        if(nativeEditor||!String.IsNullOrWhiteSpace(text))return false;
+        try{
+            AutomationElement focused=AutomationElement.FocusedElement;if(focused==null||focused.Current.IsPassword)return false;
+            if(focused.Current.ControlType==ControlType.Image&&focused.Current.HasKeyboardFocus)return true;
+            object raw;if(focused.TryGetCurrentPattern(SelectionPattern.Pattern,out raw))return ((SelectionPattern)raw).Current.GetSelection().Any(e=>e.Current.ControlType==ControlType.Image);
+        }catch(ElementNotAvailableException){}catch(InvalidOperationException){}catch(COMException){}
+        return false;
     }
     public bool SelectionMatches() {
         if(!MatchesCurrent()||selectedText==null)return false;
@@ -250,11 +266,14 @@ public sealed class ShortcutWindow : NativeWindow, IDisposable {
     public bool Registered;
     public string EditLabel;
     public string ActionLabel;
+    public string ImageLabel;
+    public static readonly string[] ImageChoices={"Ctrl + Alt + I","Ctrl + Shift + F7","Ctrl + Alt + F7","Off"};
     public Action Toggle, Cancel, Edit, TextAction;
     public Action Released;
+    public Action ImageQuestion;
     readonly System.Windows.Forms.Timer release=new System.Windows.Forms.Timer {Interval=25};
     uint registeredKey;bool awaitingRelease;
-    const int ToggleId = 19526, CancelId = 19527, EditId=19528, ActionId=19529;
+    const int ToggleId = 19526, CancelId = 19527, EditId=19528, ActionId=19529, ImageId=19530;
     public ShortcutWindow() { CreateHandle(new CreateParams { Caption="Open Mic AI input", Parent=new IntPtr(-3) });release.Tick+=(s,e)=>{if(!awaitingRelease||(Native.GetAsyncKeyState((int)registeredKey)&0x8000)!=0)return;awaitingRelease=false;release.Stop();if(Released!=null)Released();}; }
     public bool Register(string preferred) {
         Native.UnregisterHotKey(Handle, ToggleId);
@@ -286,12 +305,20 @@ public sealed class ShortcutWindow : NativeWindow, IDisposable {
         }
         return false;
     }
+    public bool RegisterImage(string preferred){
+        Native.UnregisterHotKey(Handle,ImageId);ImageLabel=null;if(preferred=="Off"){ImageLabel="Off";return true;}
+        foreach(string choice in new[]{preferred}.Concat(ImageChoices).Where(c=>c!="Off").Distinct()){
+            uint modifiers,key;if(Hotkey.Parse(choice,out modifiers,out key)&&Native.RegisterHotKey(Handle,ImageId,modifiers,key)){ImageLabel=choice;return true;}
+        }
+        return false;
+    }
     protected override void WndProc(ref Message message) {
         if (message.Msg == 0x0312&&!Capturing) {
             if (message.WParam.ToInt32() == ToggleId && Toggle != null) {Toggle();awaitingRelease=true;release.Start();}
             if (message.WParam.ToInt32() == CancelId && Cancel != null) Cancel();
             if (message.WParam.ToInt32() == EditId && Edit != null) Edit();
             if (message.WParam.ToInt32() == ActionId && TextAction != null) TextAction();
+            if (message.WParam.ToInt32() == ImageId && ImageQuestion != null) ImageQuestion();
         }
         base.WndProc(ref message);
     }
@@ -301,6 +328,7 @@ public sealed class ShortcutWindow : NativeWindow, IDisposable {
         Native.UnregisterHotKey(Handle, CancelId);
         Native.UnregisterHotKey(Handle, EditId);
         Native.UnregisterHotKey(Handle, ActionId);
+        Native.UnregisterHotKey(Handle, ImageId);
         DestroyHandle();
     }
 }

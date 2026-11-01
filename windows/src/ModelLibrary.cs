@@ -65,15 +65,17 @@ public sealed class ComputerSpecs {
 }
 
 public sealed class ModelFile {
-    public string Name, Repo, Revision, Sha256, Title, Detail;
+    public string Name, Repo, Revision, Sha256, Title, Detail, Language="en";
     public long Bytes;
     public string Url {get{return "https://huggingface.co/"+Repo+"/resolve/"+Revision+"/"+Name;}}
-    public override string ToString(){return (Title??Name)+" · "+(Bytes/1000000000.0).ToString("0.00")+" GB";}
+    public override string ToString(){return (Title??Name)+(Name=="auto"?"":Name==EdgeRockRuntime.ModelName?" · Separate setup":" · "+(Bytes/1000000000.0).ToString("0.00")+" GB"+(DecisionRuntime.Dedicated(Name)?" + runtime":""));}
 }
 public sealed class ModelPair {
     public string Id, Title, Detail;
-    public ModelFile Speech, Text;
-    public long Bytes {get{return Speech.Bytes+Text.Bytes;}}
+    public ModelFile Speech, Text, Decision;
+    public string DecisionChoice="auto";
+    public ModelFile DecisionFile {get{return Decision??ModelLibrary.ResolveDecision(Text,"auto");}}
+    public long Bytes {get{return ModelLibrary.RequiredFiles(this).Sum(f=>f.Bytes);}}
     public override string ToString(){return Title+" / "+(Bytes/1000000000.0).ToString("0.00")+" GB";}
 }
 public sealed class DownloadProgress {
@@ -84,14 +86,23 @@ public sealed class DownloadProgress {
 public static class ModelLibrary {
     static readonly ModelFile VoiceQ8=new ModelFile {Name="tdt-0.6b-v2-q8_0.gguf",Repo="mudler/parakeet-cpp-gguf",Revision="741158ae71e64ef5c89385862c18f777d07a97a1",Sha256="2027e2e1a4dc60ccdd8558f93b15e7c0db4ef8895b4e82e889f3a6275d8119c6",Bytes=903835936};
     static readonly ModelFile VoiceQ4=new ModelFile {Name="tdt-0.6b-v2-q4_k.gguf",Repo=VoiceQ8.Repo,Revision=VoiceQ8.Revision,Sha256="417e8a8e994ec4bcce7010ab1e205f8b88291a4535ddd3152d24d0e19517bfc8",Bytes=638373152};
+    static readonly ModelFile VoiceFast=new ModelFile {Name="tdt_ctc-110m-f16.gguf",Repo=VoiceQ8.Repo,Revision=VoiceQ8.Revision,Sha256="7f9a6376edde6a74592ace48b2ebdc27a1ac972d0be9dfcc29e668d99381faf1",Bytes=267452544,Title="Parakeet TDT-CTC 110M · F16",Detail="English · compact 110M model for lower memory use"};
+    static readonly ModelFile VoiceCtc=new ModelFile {Name="ctc-0.6b-q8_0.gguf",Repo=VoiceQ8.Repo,Revision=VoiceQ8.Revision,Sha256="29f9815d8f0880b0d87349bc7d277e43d49d61f1941c154d0a40fe38de045cf3",Bytes=875449920,Title="Parakeet CTC 0.6B · Q8",Detail="English · alternative CTC decoder"};
+    static readonly ModelFile VoiceMulti=new ModelFile {Name="tdt-0.6b-v3-q8_0.gguf",Repo=VoiceQ8.Repo,Revision=VoiceQ8.Revision,Sha256="4d69a4a6683f4f2d952bad794c1357ca6eb628027695b4699c5a9ad4cd07d757",Bytes=940663680,Title="Parakeet TDT 0.6B v3 · Q8",Detail="25 speech languages · use Raw transcript to preserve the spoken language",Language="auto"};
     static readonly ModelFile TextQ3=new ModelFile {Name="Qwen3-4B-Instruct-2507-Q3_K_S.gguf",Repo="unsloth/Qwen3-4B-Instruct-2507-GGUF",Revision="a06e946bb6b655725eafa393f4a9745d460374c9",Sha256="0ce20058cc0ed6b6c9213bb383589327e458c12ffce0842fc96867042d669c75",Bytes=1886997600};
     static readonly ModelFile TextQ4=new ModelFile {Name="Qwen3-4B-Instruct-2507-Q4_K_M.gguf",Repo=TextQ3.Repo,Revision=TextQ3.Revision,Sha256="3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",Bytes=2497281120};
     static readonly ModelFile TextSmall=new ModelFile {Name="Qwen3.5-2B-Q4_K_M.gguf",Repo="unsloth/Qwen3.5-2B-GGUF",Revision="f6d5376be1edb4d416d56da11e5397a961aca8ae",Sha256="aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223",Bytes=1280835840};
     static readonly ModelFile TextQ5=new ModelFile {Name="Qwen3-4B-Instruct-2507-Q5_K_M.gguf",Repo=TextQ3.Repo,Revision=TextQ3.Revision,Sha256="5bde5e9d883622acb02bf77fe7dcbc56a8b9a9ad4be78a72ca23a532658b4ecb",Bytes=2889514080};
     static readonly ModelFile TextTiny=new ModelFile {Name="Qwen3-1.7B-Q4_K_M.gguf",Repo="unsloth/Qwen3-1.7B-GGUF",Revision="d7f544eead698dbd1f15126ef60b45a1e1933222",Sha256="b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",Bytes=1107409472};
     static readonly ModelFile TextLarge=new ModelFile {Name="Qwen3-8B-Q4_K_M.gguf",Repo="unsloth/Qwen3-8B-GGUF",Revision="a6adef130ffb23ddaf1a62fec9dced968c9bc482",Sha256="120307ba529eb2439d6c430d94104dabd578497bc7bfe7e322b5d9933b449bd4",Bytes=5027784512};
-    public static readonly ModelFile[] SpeechModels={VoiceQ8,VoiceQ4};
-    public static readonly ModelFile[] TextModels={TextTiny,TextSmall,TextQ3,TextQ4,TextQ5,TextLarge};
+    public static readonly ModelFile[] SpeechModels={VoiceQ8,VoiceQ4,VoiceFast,VoiceCtc,VoiceMulti};
+    static readonly ModelFile TextEdgeRock=new ModelFile {Name=EdgeRockRuntime.ModelName,Title="EdgeRock 4B · Experimental",Detail="Text + images · separate runtime · 9.87 GB checkpoint + selected decision model",Bytes=9867757036};
+    public static ModelFile DecisionModel {get{return TextQ3;}}
+    public static readonly ModelFile AutomaticDecision=new ModelFile {Name="auto",Title="Automatic",Detail="Uses the language model; selects tested Qwen 4B for EdgeRock"};
+    static readonly ModelFile DecisionD1=new ModelFile {Name=DecisionRuntime.D1,Title="Liquid d1 Omni 600M · Experimental",Detail="Dedicated single-pass decisions · isolated CPU runtime · Liquid license",Bytes=2353560453};
+    static readonly ModelFile DecisionSimple=new ModelFile {Name=DecisionRuntime.Simple,Title="Simple Jev · Qwen 0.8B · Experimental",Detail="Direct score decisions · CPU can be slower · uncalibrated probabilities · automatic fallback",Bytes=1770114870};
+    public static readonly ModelFile[] DecisionModels={AutomaticDecision,TextTiny,TextQ3,TextQ4,DecisionD1,DecisionSimple};
+    public static readonly ModelFile[] TextModels={TextTiny,TextSmall,TextQ3,TextQ4,TextQ5,TextLarge,TextEdgeRock};
     static ModelLibrary(){
         VoiceQ8.Title="Parakeet TDT 0.6B v2 · Q8";VoiceQ8.Detail="English · best tested speech accuracy";
         VoiceQ4.Title="Parakeet TDT 0.6B v2 · Q4";VoiceQ4.Detail="English · smaller download";
@@ -109,16 +120,25 @@ public static class ModelLibrary {
     };
     // Leave room for memory reserved by firmware and the Windows display driver.
     public static ModelPair Recommend(ComputerSpecs specs){return specs.RamBytes>=11L*1073741824 && specs.GpuBytes>=5500L*1024*1024?Pairs[0]:Pairs[1];}
-    public static ModelPair Find(string speech,string text){ModelPair preset=Pairs.FirstOrDefault(p=>p.Speech.Name==speech&&p.Text.Name==text);if(preset!=null)return preset;ModelFile voice=SpeechModels.FirstOrDefault(f=>f.Name==speech),language=TextModels.FirstOrDefault(f=>f.Name==text);return voice==null||language==null?null:new ModelPair {Id="custom",Title="Your models",Speech=voice,Text=language};}
-    public static bool Installed(string root,ModelFile file){string path=Path.Combine(root,"models",file.Name);return File.Exists(path)&&new FileInfo(path).Length==file.Bytes;}
-    public static bool Installed(string root,ModelPair pair){return Installed(root,pair.Speech)&&Installed(root,pair.Text);}
+    public static ModelFile ResolveDecision(ModelFile text,string choice){return String.IsNullOrEmpty(choice)||choice=="auto"?(text.Name==EdgeRockRuntime.ModelName?DecisionModel:text):DecisionModels.FirstOrDefault(f=>f.Name==choice&&f.Name!="auto");}
+    public static ModelPair Find(string speech,string text,string decision="auto"){
+        if(String.IsNullOrEmpty(decision))decision="auto";
+        ModelPair preset=Pairs.FirstOrDefault(p=>p.Speech.Name==speech&&p.Text.Name==text);if(preset!=null&&decision=="auto")return preset;
+        ModelFile voice=SpeechModels.FirstOrDefault(f=>f.Name==speech),language=TextModels.FirstOrDefault(f=>f.Name==text);if(voice==null||language==null)return null;
+        ModelFile planner=ResolveDecision(language,decision);return planner==null?null:new ModelPair {Id="custom",Title="Your models",Speech=voice,Text=language,Decision=planner,DecisionChoice=decision};
+    }
+    public static ModelFile[] RequiredFiles(ModelPair pair){return new[]{pair.Speech,pair.Text,pair.DecisionFile}.Concat(pair.Text.Name==EdgeRockRuntime.ModelName&&DecisionRuntime.Dedicated(pair.DecisionFile.Name)?new[]{DecisionModel}:new ModelFile[0]).Distinct().ToArray();}
+    public static bool Installed(string root,ModelFile file){if(file.Name==EdgeRockRuntime.ModelName)return EdgeRockRuntime.Installed(root);if(DecisionRuntime.Dedicated(file.Name))return DecisionRuntime.Installed(root,file.Name);string path=Path.Combine(root,"models",file.Name);return File.Exists(path)&&new FileInfo(path).Length==file.Bytes;}
+    public static bool Installed(string root,ModelPair pair){return RequiredFiles(pair).All(file=>Installed(root,file));}
     public static async Task Ensure(string root,ModelPair pair,IProgress<DownloadProgress> progress,CancellationToken cancel) {
+        if(pair.Text.Name==EdgeRockRuntime.ModelName)await EdgeRockRuntime.Ensure(root,progress,cancel);
+        if(DecisionRuntime.Dedicated(pair.DecisionFile.Name))await DecisionRuntime.Ensure(root,pair.DecisionFile.Name,progress,cancel);
         ServicePointManager.SecurityProtocol|=(SecurityProtocolType)3072; // TLS 1.2 on older .NET Framework defaults.
         Directory.CreateDirectory(Path.Combine(root,"models"));
         using(HttpClient http=new HttpClient(new HttpClientHandler {UseProxy=true})) {
             http.Timeout=Timeout.InfiniteTimeSpan;
             http.DefaultRequestHeaders.UserAgent.ParseAdd("OpenMicAI/3.0");
-            foreach(ModelFile model in new[]{pair.Speech,pair.Text})
+            foreach(ModelFile model in RequiredFiles(pair).Where(file=>file.Name!=EdgeRockRuntime.ModelName&&!DecisionRuntime.Dedicated(file.Name)))
                 await Download(http,model.Url,Path.Combine(root,"models",model.Name),model.Bytes,model.Sha256,progress,cancel);
         }
     }
@@ -176,32 +196,38 @@ public static class ModelLibrary {
 }
 
 public sealed class ModelWindow : Form {
+    readonly RedCheck fastWriting;
+    public bool FastWriting {get{return fastWriting.Checked;}}
     public ModelPair Selected;public Func<ModelPair,Task<bool>> ApplyModels;public Func<bool> CanApply;
-    readonly string root;readonly ComboBox speechChoice,textChoice;readonly Label state,speechName,textName,loaded;readonly ProgressBar bar;readonly Button install,cancel;CancellationTokenSource download;bool busy,disposed;
-    ModelPair Choice {get{return ModelLibrary.Find(((ModelFile)speechChoice.SelectedItem).Name,((ModelFile)textChoice.SelectedItem).Name);}}
+    readonly string root;readonly ComboBox speechChoice,textChoice,decisionChoice;readonly Label state,speechName,textName,decisionName,loaded;readonly ProgressBar bar;readonly Button install,cancel;CancellationTokenSource download;bool busy,disposed;
+    ModelPair Choice {get{return ModelLibrary.Find(((ModelFile)speechChoice.SelectedItem).Name,((ModelFile)textChoice.SelectedItem).Name,((ModelFile)decisionChoice.SelectedItem).Name);}}
     public ModelWindow(string directory,Settings settings,ComputerSpecs specs) {
         root=directory;Text=Brand.Name+" models";ClientSize=new Size(760,620);Font=new Font("Segoe UI",10);BackColor=Color.White;
         FlowLayoutPanel layout=new FlowLayoutPanel {Dock=DockStyle.Fill,Padding=new Padding(24),FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true};Controls.Add(layout);
         layout.Controls.Add(new Label {Text="Local models",Font=new Font("Segoe UI",16,FontStyle.Bold),AutoSize=true,Margin=new Padding(0,0,0,10)});
-        ModelPair recommended=ModelLibrary.Recommend(specs),current=ModelLibrary.Find(settings.Speech,settings.Text)??recommended;
+        ModelPair recommended=ModelLibrary.Recommend(specs),current=ModelLibrary.Find(settings.Speech,settings.Text,settings.Decision)??recommended;
         loaded=new Label {AutoSize=true,ForeColor=Theme.Muted,Margin=new Padding(0,0,0,12)};layout.Controls.Add(loaded);
         speechChoice=Selector(ModelLibrary.SpeechModels,current.Speech,recommended.Speech,"Speech-to-text");textChoice=Selector(ModelLibrary.TextModels,current.Text,recommended.Text,"Language model");
         speechName=Description();textName=Description();
         foreach(Control control in new Control[]{Heading("Speech-to-text"),speechChoice,speechName,Heading("Language model"),textChoice,textName})layout.Controls.Add(control);
-        state=new Label {Size=new Size(580,42),Margin=new Padding(0,6,0,8)};bar=new ProgressBar {Size=new Size(580,8),Margin=new Padding(0,0,0,14)};layout.Controls.AddRange(new Control[]{state,bar});
-        FlowLayoutPanel actions=new FlowLayoutPanel {Width=620,Height=43,WrapContents=false};install=Theme.Button("Load models",true);install.UseMnemonic=false;cancel=Theme.Button("Cancel download");cancel.Visible=false;
-        cancel.Click+=(s,e)=>{if(download!=null)download.Cancel();};install.Click+=async(s,e)=>await Install();actions.Controls.AddRange(new Control[]{install,cancel});layout.Controls.Add(actions);
-        layout.Controls.Add(new Label {Text="Local processing · Models stay ready",AutoSize=true,ForeColor=Theme.Muted,Margin=new Padding(0,12,0,0)});
-        speechChoice.SelectedIndexChanged+=(s,e)=>RefreshChoice();textChoice.SelectedIndexChanged+=(s,e)=>RefreshChoice();RefreshChoice();UpdateStatus("",settings);Theme.Apply(this);
+        fastWriting=new RedCheck {Text="Use Qwen for faster dictation and text edits",Checked=settings.EdgeRockFastWriting,AutoSize=true,Margin=new Padding(0,0,0,14),AccessibleName="Use Qwen for faster dictation and text edits"};layout.Controls.Add(fastWriting);
+        decisionChoice=Selector(ModelLibrary.DecisionModels,ModelLibrary.DecisionModels.First(file=>file.Name==current.DecisionChoice),ModelLibrary.AutomaticDecision,"Decision model");decisionName=Description();layout.Controls.Add(Heading("Decision model"));layout.Controls.Add(decisionChoice);layout.Controls.Add(decisionName);
+        decisionChoice.Format+=(s,e)=>{if(((ModelFile)e.ListItem).Name=="Qwen3-1.7B-Q4_K_M.gguf")e.Value=Convert.ToString(e.Value)+" · Compact / experimental";};
+        FlowLayoutPanel feedback=new FlowLayoutPanel {Dock=DockStyle.Bottom,Height=148,Padding=new Padding(24,4,24,8),FlowDirection=FlowDirection.TopDown,WrapContents=false};Controls.Add(feedback);
+        state=new Label {Size=new Size(580,36),Margin=new Padding(0,0,0,4)};bar=new ProgressBar {Size=new Size(580,8),Margin=new Padding(0,0,0,8)};feedback.Controls.AddRange(new Control[]{state,bar});
+        FlowLayoutPanel actions=new FlowLayoutPanel {Width=620,Height=43,WrapContents=false,Margin=Padding.Empty};install=Theme.Button("Load models",true);install.UseMnemonic=false;cancel=Theme.Button("Cancel download");cancel.Visible=false;
+        cancel.Click+=(s,e)=>{if(download!=null)download.Cancel();};install.Click+=async(s,e)=>await Install();actions.Controls.AddRange(new Control[]{install,cancel});feedback.Controls.Add(actions);
+        feedback.Controls.Add(new Label {Text="Local processing · Models stay ready",AutoSize=true,ForeColor=Theme.Muted,Margin=new Padding(0,8,0,0)});
+        speechChoice.SelectedIndexChanged+=(s,e)=>RefreshChoice();textChoice.SelectedIndexChanged+=(s,e)=>RefreshChoice();decisionChoice.SelectedIndexChanged+=(s,e)=>RefreshChoice();fastWriting.CheckedChanged+=(s,e)=>RefreshChoice();RefreshChoice();UpdateStatus("",settings);Theme.Apply(this);
     }
     static Label Heading(string title){return new Label {Text=title,AutoSize=true,Font=new Font("Segoe UI",11,FontStyle.Bold),Margin=new Padding(0,7,0,8)};}
-    static Label Description(){return new Label {Size=new Size(580,25),ForeColor=Theme.Muted,Margin=new Padding(0,0,0,14)};}
+    static Label Description(){return new Label {Size=new Size(580,42),ForeColor=Theme.Muted,Margin=new Padding(0,0,0,14)};}
     static ComboBox Selector(ModelFile[] files,ModelFile current,ModelFile recommended,string role){ComboBox box=new ComboBox {Width=580,DropDownStyle=ComboBoxStyle.DropDownList,AccessibleName=role,Name=role,Margin=new Padding(0,0,0,8),FormattingEnabled=true};box.Items.AddRange(files);box.Format+=(s,e)=>{ModelFile file=(ModelFile)e.ListItem;e.Value=file.ToString()+(file==recommended?" · Recommended":"");};box.SelectedItem=current;return box;}
-    public void UpdateStatus(string text,Settings settings){ModelPair pair=ModelLibrary.Find(settings.Speech,settings.Text);bool ready=text.StartsWith("Ready");loaded.Text=pair!=null&&ModelLibrary.Installed(root,pair)?(ready?"Models ready":"Models downloaded"):"Choose your models";if(!busy&&pair!=null&&pair.Speech==Choice.Speech&&pair.Text==Choice.Text&&ready)state.Text="Ready";}
-    void RefreshChoice(){ModelPair pair=Choice;speechName.Text=pair.Speech.Detail;textName.Text=pair.Text.Detail;long needed=new[]{pair.Speech,pair.Text}.Where(f=>!ModelLibrary.Installed(root,f)).Sum(f=>f.Bytes);state.Text=needed==0?"Ready to load":(needed/1000000000.0).ToString("0.00")+" GB download";install.Text=needed==0?"Load models":"Download & load models";}
-    async Task Install(){if(busy)return;if(CanApply!=null&&!CanApply()){state.Text="Finish recording or model loading first.";return;}busy=true;speechChoice.Enabled=textChoice.Enabled=install.Enabled=false;cancel.Visible=true;CancellationTokenSource pending=new CancellationTokenSource();download=pending;ModelPair pair=Choice;bool transferring=true;
-        try{Progress<DownloadProgress> progress=new Progress<DownloadProgress>(p=>{if(disposed||!transferring)return;state.Text=p.Message;bar.Value=p.Total>0?(int)Math.Min(100,p.Done*100/p.Total):0;});await ModelLibrary.Ensure(root,pair,progress,pending.Token);pending.Token.ThrowIfCancellationRequested();if(disposed)return;if(CanApply!=null&&!CanApply()){state.Text="Downloaded. Finish recording, then click Load models.";return;}transferring=false;cancel.Visible=false;Selected=pair;state.Text="Loading both models…";bar.Style=ProgressBarStyle.Marquee;if(ApplyModels==null)throw new InvalidOperationException("Reopen Settings to load your models.");bool ready=await ApplyModels(pair);if(disposed)return;state.Text=ready?"Ready · both models stay loaded":"Could not load models. Click Load models to retry.";}
-        catch(OperationCanceledException){if(!disposed)state.Text="Download paused. Click Download & load models to resume.";}catch(Exception error){if(!disposed)state.Text="Could not prepare models: "+error.Message;}finally{transferring=false;busy=false;if(!disposed){speechChoice.Enabled=textChoice.Enabled=install.Enabled=true;cancel.Visible=false;bar.Style=ProgressBarStyle.Continuous;install.Text=ModelLibrary.Installed(root,Choice)?"Load models":"Download & load models";}if(download==pending)download=null;pending.Dispose();}}
+    public void UpdateStatus(string text,Settings settings){ModelPair pair=ModelLibrary.Find(settings.Speech,settings.Text,settings.Decision);bool ready=text.StartsWith("Ready");loaded.Text=pair!=null&&ModelLibrary.Installed(root,pair)?(ready?"Models ready":"Models downloaded"):"Choose your models";if(!busy&&pair!=null&&pair.Speech==Choice.Speech&&pair.Text==Choice.Text&&pair.DecisionChoice==Choice.DecisionChoice&&(pair.Text.Name!=EdgeRockRuntime.ModelName||fastWriting.Checked==settings.EdgeRockFastWriting)&&ready)state.Text="Ready";}
+    void RefreshChoice(){ModelPair pair=Choice;speechName.Text=pair.Speech.Detail;textName.Text=pair.Text.Detail;bool edge=pair.Text.Name==EdgeRockRuntime.ModelName;fastWriting.Visible=edge;decisionName.Text=(DecisionRuntime.Dedicated(pair.DecisionFile.Name)?pair.DecisionFile.Detail:(pair.DecisionChoice=="auto"?"Automatic: ":"")+pair.DecisionFile.Title+" · chooses layouts and checks meaning")+(pair.DecisionFile.Name=="Qwen3-1.7B-Q4_K_M.gguf"?" · experimental; can misclassify layouts":"");long needed=ModelLibrary.RequiredFiles(pair).Where(f=>!ModelLibrary.Installed(root,f)).Sum(f=>f.Bytes);bool setup=edge&&!EdgeRockRuntime.Installed(root)||DecisionRuntime.Dedicated(pair.DecisionFile.Name)&&!DecisionRuntime.Installed(root,pair.DecisionFile.Name);state.Text=setup?(pair.Bytes/1000000000.0).ToString("0.00")+" GB selected model files + Python runtime. Setup progress appears here.":needed==0?"Ready to load":(needed/1000000000.0).ToString("0.00")+" GB download";install.Text=setup||needed>0?"Download & load models":"Load models";}
+    async Task Install(){if(busy)return;if(CanApply!=null&&!CanApply()){state.Text="Finish recording or model loading first.";return;}busy=true;speechChoice.Enabled=textChoice.Enabled=decisionChoice.Enabled=fastWriting.Enabled=install.Enabled=false;cancel.Visible=true;CancellationTokenSource pending=new CancellationTokenSource();download=pending;ModelPair pair=Choice;bool transferring=true;
+        try{Progress<DownloadProgress> progress=new Progress<DownloadProgress>(p=>{if(disposed||!transferring)return;state.Text=p.Message;bar.Value=p.Total>0?(int)Math.Min(100,p.Done*100/p.Total):0;});await ModelLibrary.Ensure(root,pair,progress,pending.Token);pending.Token.ThrowIfCancellationRequested();if(disposed)return;if(CanApply!=null&&!CanApply()){state.Text="Downloaded. Finish recording, then click Load models.";return;}transferring=false;cancel.Visible=false;Selected=pair;state.Text="Loading selected models…";bar.Style=ProgressBarStyle.Marquee;if(ApplyModels==null)throw new InvalidOperationException("Reopen Settings to load your models.");bool ready=await ApplyModels(pair);if(disposed)return;state.Text=ready?"Ready · selected models stay loaded":"Could not load models. Click Load models to retry.";}
+        catch(OperationCanceledException){if(!disposed)state.Text="Download paused. Click Download & load models to resume.";}catch(Exception error){if(!disposed)state.Text="Could not prepare models: "+error.Message;}finally{transferring=false;busy=false;if(!disposed){speechChoice.Enabled=textChoice.Enabled=decisionChoice.Enabled=fastWriting.Enabled=install.Enabled=true;cancel.Visible=false;bar.Style=ProgressBarStyle.Continuous;install.Text=ModelLibrary.Installed(root,Choice)?"Load models":"Download & load models";}if(download==pending)download=null;pending.Dispose();}}
     protected override void Dispose(bool disposing){if(disposing){disposed=true;if(download!=null)download.Cancel();}base.Dispose(disposing);}
 }
 
