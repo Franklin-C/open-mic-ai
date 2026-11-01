@@ -55,11 +55,11 @@ public sealed class ImageQuestionWindow : Form {
     readonly Func<Models> models;readonly Func<bool> canStart;readonly Func<int> microphone;
     readonly PictureBox preview=new PictureBox {Dock=DockStyle.Fill,SizeMode=PictureBoxSizeMode.Zoom,BackColor=Theme.Surface,AccessibleName="Selected image"};
     readonly TextBox question=new TextBox {Multiline=true,Dock=DockStyle.Fill,MaxLength=4000,ScrollBars=ScrollBars.Vertical,AccessibleName="Chat message"};
-    readonly TextBox answer=new TextBox {Multiline=true,ReadOnly=true,Dock=DockStyle.Fill,ScrollBars=ScrollBars.Vertical,AccessibleName="Chat conversation"};
+    readonly ChatTranscript answer=new ChatTranscript();
     readonly Label status=new Label {Dock=DockStyle.Fill,ForeColor=Theme.Muted};
     readonly Button attach=Theme.Button("Attach image"),capture=Theme.Button("Select screen region"),record=Theme.Button("Speak question"),ask=Theme.Button("Ask",true),cancel=Theme.Button("Cancel"),copy=Theme.Button("Copy answer");
     readonly Button newChat=Theme.Button("New chat"),removeImage=Theme.Button("Remove image");
-    readonly ChatSession conversation=new ChatSession();readonly RowStyle imageRow=new RowStyle(SizeType.Absolute,0);string lastAnswer="";
+    readonly ChatSession conversation=new ChatSession();readonly RowStyle imageRow=new RowStyle(SizeType.Absolute,0);readonly RowStyle composerRow=new RowStyle(SizeType.Absolute,156);string lastAnswer="";
     readonly System.Windows.Forms.Timer recordingLimit=new System.Windows.Forms.Timer {Interval=60000};
     CancellationTokenSource pending;Microphone mic;Utterances segments;readonly List<Task<string>> transcriptions=new List<Task<string>>();
     byte[] png;bool disposed;int recordingGeneration;
@@ -73,27 +73,30 @@ public sealed class ImageQuestionWindow : Form {
     public Task SelectRegion(){return CaptureRegion();}
     public ImageQuestionWindow(Func<Models> getModels,Func<bool> available,Func<int> getMicrophone){
         models=getModels;canStart=available;microphone=getMicrophone;Text="Chat";Font=new Font("Segoe UI",10);BackColor=Color.White;ClientSize=new Size(800,730);
-        TableLayoutPanel layout=new TableLayoutPanel {Dock=DockStyle.Fill,ColumnCount=1,RowCount=8,Padding=new Padding(24)};
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute,46));layout.RowStyles.Add(imageRow);layout.RowStyles.Add(new RowStyle(SizeType.Absolute,28));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));foreach(int height in new[]{28,80,46,48})layout.RowStyles.Add(new RowStyle(SizeType.Absolute,height));
-        FlowLayoutPanel sources=new FlowLayoutPanel {Dock=DockStyle.Fill,WrapContents=false};sources.Controls.AddRange(new Control[]{attach,capture,removeImage,newChat});layout.Controls.Add(sources,0,0);layout.Controls.Add(preview,0,1);
-        layout.Controls.Add(new Label {Text="Conversation",AutoSize=true,Margin=new Padding(0,8,0,0)},0,2);layout.Controls.Add(answer,0,3);
-        layout.Controls.Add(new Label {Text="Message · Ctrl + Enter to send",AutoSize=true,Margin=new Padding(0,8,0,0)},0,4);layout.Controls.Add(question,0,5);
-        FlowLayoutPanel actions=new FlowLayoutPanel {Dock=DockStyle.Fill,Padding=new Padding(0,6,0,0)};actions.Controls.AddRange(new Control[]{record,ask,cancel,copy});layout.Controls.Add(actions,0,6);layout.Controls.Add(status,0,7);Controls.Add(layout);
+        TableLayoutPanel layout=new TableLayoutPanel {Dock=DockStyle.Fill,ColumnCount=1,RowCount=4,Padding=new Padding(20,8,20,12)};
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,44));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));layout.RowStyles.Add(composerRow);layout.RowStyles.Add(new RowStyle(SizeType.Absolute,38));
+        Panel header=new Panel {Dock=DockStyle.Fill};newChat.Dock=DockStyle.Right;header.Controls.Add(newChat);header.Controls.Add(new Label {Text="Local chat",Font=new Font("Segoe UI",12,FontStyle.Bold),AutoSize=true,Location=new Point(8,9)});layout.Controls.Add(header,0,0);layout.Controls.Add(answer,0,1);
+        Panel composer=new ChatComposer {Dock=DockStyle.Fill,Padding=new Padding(14),Margin=new Padding(0,8,0,0)};
+        TableLayoutPanel inputLayout=new TableLayoutPanel {Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,Margin=Padding.Empty};inputLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));inputLayout.RowStyles.Add(imageRow);inputLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));inputLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,42));
+        Panel attachment=new Panel {Dock=DockStyle.Fill};preview.Dock=DockStyle.Left;preview.Width=96;removeImage.Dock=DockStyle.None;removeImage.AutoSize=false;removeImage.Size=new Size(98,36);removeImage.Text="Remove";removeImage.AccessibleName="Remove image";removeImage.Top=14;attachment.Resize+=(s,e)=>removeImage.Left=Math.Max(0,attachment.ClientSize.Width-100);attachment.Controls.Add(preview);attachment.Controls.Add(removeImage);attachment.Controls.Add(new Label {Text="Image attached\nIncluded with your follow-up questions",AutoSize=true,Location=new Point(108,12),ForeColor=Theme.Muted});inputLayout.Controls.Add(attachment,0,0);
+        question.Tag="history-reader";question.BorderStyle=BorderStyle.None;question.Margin=Padding.Empty;Panel messageHost=new Panel {Dock=DockStyle.Fill,Margin=new Padding(4,8,4,10)};messageHost.Controls.Add(question);Label placeholder=new Label {Text="Message Open Mic AI…",AutoSize=true,ForeColor=Theme.Muted,BackColor=Color.White,Location=new Point(0,2)};messageHost.Controls.Add(placeholder);placeholder.BringToFront();placeholder.Click+=(s,e)=>question.Focus();question.TextChanged+=(s,e)=>placeholder.Visible=question.TextLength==0;inputLayout.Controls.Add(messageHost,0,1);
+        record.Text="Speak";ask.Text="Send";cancel.Text="Stop";copy.Visible=false;
+        FlowLayoutPanel actions=new FlowLayoutPanel {Dock=DockStyle.Fill,WrapContents=false,Padding=new Padding(0,4,0,0),Margin=Padding.Empty};actions.Controls.AddRange(new Control[]{attach,capture,record,ask,cancel});inputLayout.Controls.Add(actions,0,2);composer.Controls.Add(inputLayout);layout.Controls.Add(composer,0,2);layout.Controls.Add(status,0,3);Controls.Add(layout);
+        RenderConversation();
         status.Text="Chat with your local language model. Attach an image or screen grab with EdgeRock. Recent turns stay in memory until you close the window.";cancel.Enabled=copy.Enabled=removeImage.Enabled=false;
         attach.Click+=(s,e)=>Attach();capture.Click+=async(s,e)=>await CaptureRegion();record.Click+=async(s,e)=>{if(mic!=null)await FinishRecording();else StartRecording();};ask.Click+=async(s,e)=>await Ask();cancel.Click+=(s,e)=>CancelWork();copy.Click+=(s,e)=>{try{TextClipboard.SetText(lastAnswer);}catch{status.Text="Clipboard busy. Try Copy answer again.";}};
-        newChat.Click+=(s,e)=>ClearChat();removeImage.Click+=(s,e)=>ClearChat();question.KeyDown+=async(s,e)=>{if(e.Control&&e.KeyCode==Keys.Enter){e.SuppressKeyPress=true;await Ask();}};
+        newChat.Click+=(s,e)=>ClearChat();removeImage.Click+=(s,e)=>ClearChat();question.KeyDown+=async(s,e)=>{if(e.KeyCode==Keys.Enter&&!e.Shift){e.SuppressKeyPress=true;await Ask();}};
         recordingLimit.Tick+=async(s,e)=>await FinishRecording();Theme.Apply(this);
         Shown+=(s,e)=>question.Focus();
     }
     bool Available(){Models current=models();if(!canStart()){status.Text="Finish recording, importing or loading models first.";return false;}if(current==null||!current.Alive){status.Text="Load a language model in Settings → System → Models first.";return false;}if(png!=null&&!current.SupportsImages){status.Text="Load EdgeRock with vision for image chat, or remove the image to chat with your language model.";return false;}return true;}
-    void ControlsBusy(bool busy){attach.Enabled=capture.Enabled=question.Enabled=ask.Enabled=newChat.Enabled=!busy;removeImage.Enabled=!busy&&png!=null;record.Enabled=!busy||mic!=null;record.Text=mic!=null?"Stop and ask":"Speak question";cancel.Enabled=busy;copy.Enabled=!busy&&!String.IsNullOrEmpty(lastAnswer);}
-    void ClearChat(){if(IsBusy)return;conversation.Clear();answer.Clear();question.Clear();lastAnswer="";png=null;Image previous=preview.Image;preview.Image=null;if(previous!=null)previous.Dispose();imageRow.Height=0;ControlsBusy(false);status.Text="New local chat. Type or speak a message, or attach an image.";}
-    void RenderConversation(){answer.Text=String.Join(Environment.NewLine+Environment.NewLine,Array.ConvertAll(conversation.Turns,turn=>(turn.Role=="user"?"You":"Assistant")+Environment.NewLine+turn.Text));answer.SelectionStart=answer.TextLength;answer.ScrollToCaret();}
+    void ControlsBusy(bool busy){attach.Enabled=capture.Enabled=question.Enabled=ask.Enabled=newChat.Enabled=!busy;removeImage.Enabled=!busy&&png!=null;record.Enabled=!busy||mic!=null;record.Text=mic!=null?"Stop and send":"Speak";cancel.Enabled=busy;copy.Enabled=!busy&&!String.IsNullOrEmpty(lastAnswer);}
+    void ClearChat(){if(IsBusy)return;conversation.Clear();answer.ClearMessages();question.Clear();lastAnswer="";png=null;Image previous=preview.Image;preview.Image=null;if(previous!=null)previous.Dispose();imageRow.Height=0;composerRow.Height=156;RenderConversation();ControlsBusy(false);status.Text="New local chat. Type or speak a message, or attach an image.";}
+    void RenderConversation(){answer.Render(conversation.Turns,png);}
     void SetImage(Image image){
         if(image.Width*(long)image.Height>16000000)throw new InvalidOperationException("Choose an image with at most 16 million pixels.");
         using(Bitmap normalized=new Bitmap(image.Width,image.Height)){using(Graphics draw=Graphics.FromImage(normalized))draw.DrawImage(image,0,0,image.Width,image.Height);using(MemoryStream stream=new MemoryStream()){normalized.Save(stream,ImageFormat.Png);if(stream.Length>8*1024*1024)throw new InvalidOperationException("Choose a smaller image (up to 8 MB as PNG).");png=stream.ToArray();}Image previous=preview.Image;preview.Image=new Bitmap(normalized);if(previous!=null)previous.Dispose();}
-        conversation.Clear();answer.Clear();lastAnswer="";copy.Enabled=false;removeImage.Enabled=true;imageRow.Height=140;status.Text="New image selected. Started a new chat; follow-up questions will use this image.";
+        conversation.Clear();answer.ClearMessages();lastAnswer="";copy.Enabled=false;removeImage.Enabled=true;imageRow.Height=76;composerRow.Height=232;RenderConversation();status.Text="New image selected. Started a new chat; follow-up questions will use this image.";
     }
     void Attach(){if(IsBusy)return;using(OpenFileDialog picker=new OpenFileDialog {Title="Choose an image",Filter="Images|*.png;*.jpg;*.jpeg;*.bmp|All files|*.*"})if(picker.ShowDialog(this)==DialogResult.OK)try{if(new FileInfo(picker.FileName).Length>16*1024*1024)throw new InvalidOperationException("Choose an image file under 16 MB.");using(FileStream file=File.OpenRead(picker.FileName))using(Image image=Image.FromStream(file))SetImage(image);}catch(Exception error){status.Text="Could not open image: "+error.Message;}}
     async Task CaptureRegion(){
@@ -121,9 +124,9 @@ public sealed class ImageQuestionWindow : Form {
     }
     async Task Ask(){
         if(IsBusy||!Available())return;if(String.IsNullOrWhiteSpace(question.Text)){status.Text="Enter a message first.";return;}string message=question.Text.Trim();
-        CancellationTokenSource work=new CancellationTokenSource();pending=work;ControlsBusy(true);status.Text=png!=null?"Reading image and conversation locally…":"Thinking locally…";
+        CancellationTokenSource work=new CancellationTokenSource();pending=work;ControlsBusy(true);answer.Render(conversation.Turns,png,message,true);status.Text=png!=null?"Reading image and conversation locally…":"Thinking locally…";
         try{string result=await models().Chat(conversation.Request(message),png,work.Token);work.Token.ThrowIfCancellationRequested();if(!disposed){conversation.Complete(message,result);lastAnswer=result;RenderConversation();question.Clear();status.Text="Answer ready. Ask a follow-up, or start a new chat. Recent conversation stays in memory.";if(AnswerReady!=null)AnswerReady(result);}}
-        catch(OperationCanceledException){if(!disposed)status.Text="Cancelled.";}catch(Exception error){if(!disposed)status.Text="Could not answer: "+error.Message;}
+        catch(OperationCanceledException){if(!disposed){RenderConversation();status.Text="Cancelled.";}}catch(Exception error){if(!disposed){answer.Render(conversation.Turns,png,message,false,error.Message);status.Text="Your message is kept below. You can edit it and send again.";}}
         finally{if(pending==work)pending=null;work.Dispose();if(!disposed)ControlsBusy(false);}
     }
     public void CancelWork(){recordingLimit.Stop();recordingGeneration++;bool recording=mic!=null;if(mic!=null){mic.Dispose();mic=null;}if(pending!=null){pending.Cancel();if(recording){pending.Dispose();pending=null;}}if(!disposed){status.Text="Cancelled.";ControlsBusy(IsBusy);}}

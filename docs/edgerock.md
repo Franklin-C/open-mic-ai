@@ -125,6 +125,12 @@ a per-process bearer token, disables request logging, and accepts attached PNG
 data rather than remote image URLs. Images and answers are not added to history.
 The vision frontend loads at startup so it does not wait until the first question.
 This path does not use the upstream vision benchmark's FlashAttention kernels.
+The vision tower uses native PyTorch SDPA and caps image processing at 262,144
+pixels. On CUDA GPUs below 16 GiB, that tower runs on CPU and transfers its
+features to the GPU language model, leaving more graphics memory for generation.
+An image allocation failure retries once at 65,536 pixels. If it still fails,
+the app displays a memory-specific explanation instead of a generic HTTP error.
+The original attachment remains in memory; these limits apply to model input.
 
 ## Architecture and reported results
 
@@ -181,3 +187,8 @@ In a later run with the eight-second writing budget, slower direct edits
 recovered through Qwen in 9.3–10.1 seconds. A forced early timeout also completed
 successfully, and image questions still worked after cancellation. Runtime load,
 prompt shape and current GPU activity affect these timings.
+After enabling SDPA and the CPU vision tower on the 12 GiB GPU, the local
+integration checks passed image reading, chart values, follow-up arithmetic and
+cancellation. Small image questions took roughly 3.5–7.2 seconds; two synthetic
+chart questions took about 10–11 seconds. Those are smoke checks, not a general
+chart-reading accuracy benchmark.

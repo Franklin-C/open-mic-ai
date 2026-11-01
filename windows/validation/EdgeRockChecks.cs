@@ -88,7 +88,7 @@ public static class EdgeRockChecks {
             using(Bitmap source=new Bitmap(40,30)){set.Invoke(window,new object[]{source});}
             byte[] png=Field<byte[]>(window,"png");
             using(MemoryStream stream=new MemoryStream(png))using(Image restored=Image.FromStream(stream))Check(restored.Width==40&&restored.Height==30,"The selected image stays valid after its source is disposed");
-            All(window).OfType<Button>().Single(b=>b.Text=="Ask").PerformClick();Application.DoEvents();
+            All(window).OfType<Button>().Single(b=>b.Text=="Send").PerformClick();Application.DoEvents();
             Check(!window.IsBusy&&All(window).OfType<Label>().Any(l=>l.Text.StartsWith("Load a language model")),"An unavailable backend gives feedback without recording or sending a question");
             window.Close();
         }

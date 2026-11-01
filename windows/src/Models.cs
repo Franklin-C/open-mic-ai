@@ -521,7 +521,7 @@ public sealed class Models : IDisposable {
             request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);
             request.Content=new StringContent(new JavaScriptSerializer {MaxJsonLength=16*1024*1024}.Serialize(payload),Encoding.UTF8,"application/json");
             using(HttpResponseMessage response=await SendChat(request,cancel)) {
-                response.EnsureSuccessStatusCode();
+                if(!response.IsSuccessStatusCode){string explanation="The local model could not answer. Try again.";try{var failure=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(await response.Content.ReadAsStringAsync());object detail;if(failure!=null&&failure.TryGetValue("error",out detail)&&detail is string&&!String.IsNullOrWhiteSpace((string)detail))explanation=((string)detail).Substring(0,Math.Min(400,((string)detail).Length));}catch{}throw new InvalidOperationException(explanation);}
                 Dictionary<string,object> data=CompletionResponse(await response.Content.ReadAsStringAsync());
                 Dictionary<string,object> choice=(Dictionary<string,object>)((object[])data["choices"])[0];
                 if(Convert.ToString(choice["finish_reason"])=="length")throw new InvalidOperationException("The result was cut short. Your original text is unchanged.");

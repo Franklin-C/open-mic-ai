@@ -45,8 +45,12 @@ validation limits.
 
 Open **Chat** to type or speak messages to the selected language model. With
 EdgeRock, **Attach image** or **Select screen region** adds an image; subsequent
-messages include the same image and recent conversation. **Ctrl + Enter** sends
-the message. **New chat**, **Remove image**, or selecting a different image clears
+messages include the same image and recent conversation. **Enter** sends the
+message; **Shift + Enter** inserts a new line. **Ctrl + Enter** also sends.
+Messages appear as chat bubbles, with image attachments and individual Copy
+controls. The composer stays below the scrolling thread. Model failures appear
+in the thread and keep the message available to retry. **New chat**, **Remove**,
+or selecting a different image clears
 the previous conversation. Navigation within the main window preserves completed
 turns; closing that window clears them. Chat is kept in memory and is not added
 to dictation history. Up to eight recent exchanges are retained, with a 12,000

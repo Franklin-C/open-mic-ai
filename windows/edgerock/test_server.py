@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 
-from server import complete, handler_for, image_from_data_url, tokenizer_data, schema_filter
+from server import complete, handler_for, image_from_data_url, tokenizer_data, schema_filter, inference_error, EdgeRock
 from setup import setup_lock, verified
 
 
@@ -25,6 +25,44 @@ class EngineFixture:
 
 
 class AdapterChecks(unittest.TestCase):
+    def test_image_oom_retries_once_with_smaller_budget(self):
+        import types
+        class Oom(RuntimeError):pass
+        cleared=[];calls=[]
+        engine=EdgeRock.__new__(EdgeRock);engine.vision=True
+        engine.torch=types.SimpleNamespace(OutOfMemoryError=Oom,cuda=types.SimpleNamespace(empty_cache=lambda:cleared.append(True)))
+        engine.processor=types.SimpleNamespace(image_processor=types.SimpleNamespace(size={'longest_edge':262144,'shortest_edge':65536}))
+        def generate(*args):
+            calls.append(dict(engine.processor.image_processor.size))
+            if len(calls)==1:raise Oom('synthetic')
+            return {'text':'Recovered'}
+        engine._generate=generate
+        self.assertEqual(engine.generate([{'content':[]}],32)['text'],'Recovered')
+        self.assertEqual(len(calls),2);self.assertEqual(calls[1]['longest_edge'],65536)
+        self.assertEqual(engine.processor.image_processor.size['longest_edge'],262144)
+        self.assertTrue(cleared)
+
+    def test_memory_error_is_actionable_without_request_details(self):
+        code,message=inference_error(MemoryError('synthetic private request details'))
+        self.assertEqual(code,'image_memory')
+        self.assertIn('smaller screen region',message)
+        self.assertNotIn('private',message)
+
+    def test_memory_error_protocol(self):
+        class Oom(EngineFixture):
+            def generate(self,*args):raise MemoryError('private')
+        with ThreadingHTTPServer(('127.0.0.1',0),handler_for(Oom(),'fixture-secret')) as server:
+            worker=threading.Thread(target=server.serve_forever,daemon=True);worker.start()
+            try:
+                http=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                request=urllib.request.Request(f'http://127.0.0.1:{server.server_port}/v1/chat/completions',data=json.dumps(self.request()).encode(),headers={'Authorization':'Bearer fixture-secret'})
+                with self.assertRaises(urllib.error.HTTPError) as failure:http.open(request)
+                self.assertEqual(failure.exception.code,503)
+                body=json.loads(failure.exception.read())
+                self.assertEqual(body['code'],'image_memory')
+                self.assertNotIn('private',body['error'])
+            finally:server.shutdown();worker.join()
+
     def test_cancel_releases_the_generation_slot(self):
         entered = threading.Event()
         class BlockingEngine(EngineFixture):

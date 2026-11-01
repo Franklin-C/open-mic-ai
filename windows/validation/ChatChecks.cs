@@ -32,9 +32,10 @@ public static class ChatChecks {
         using(HttpListener server=new HttpListener())using(Models model=new Models(Path.GetTempPath())){
             server.Prefixes.Add(url+"/");server.Start();var processes=Field<List<Process>>(model,"processes");processes.Add(Process.GetCurrentProcess());processes.Add(Process.GetCurrentProcess());Set(model,"rewriteUrl",url);Set(model,"visionUrl",url);model.Ready=true;typeof(Models).GetProperty("SupportsImages").GetSetMethod(true).Invoke(model,new object[]{true});
             try{using(ImageQuestionWindow window=new ImageQuestionWindow(()=>model,()=>true,()=>-1)){
-                window.Show();Application.DoEvents();TextBox input=Field<TextBox>(window,"question"),transcript=Field<TextBox>(window,"answer");
+                window.Show();Application.DoEvents();TextBox input=Field<TextBox>(window,"question");ChatTranscript transcript=Field<ChatTranscript>(window,"answer");
                 using(Bitmap image=new Bitmap(80,40)){using(MemoryStream buffer=new MemoryStream()){image.Save(buffer,System.Drawing.Imaging.ImageFormat.Png);window.UseImage(buffer.ToArray());}}
                 input.Text="Read the number.";Task first=Ask(window);HttpListenerContext request=await server.GetContextAsync();string body=await Read(request);
+                Check(transcript.Controls.OfType<ChatMessageBubble>().Count()==2&&!transcript.Controls.OfType<TextBox>().Any(),"A sent message and thinking state appear as chat bubbles, not an editable conversation box");
                 Check(body.Contains("data:image/png;base64,")&&request.Request.Headers["Authorization"]=="Bearer "+Field<string>(model,"token"),"Image chat sends the selected image to the authenticated local model");await Reply(request,"The number is 42.");await first;
                 Check(transcript.Text.Contains("Read the number.")&&transcript.Text.Contains("The number is 42.")&&input.Text=="","Successful chat displays both turns and clears the composer");
                 input.Text="What is that number plus one?";Task followup=Ask(window);request=await server.GetContextAsync();body=await Read(request);
@@ -46,6 +47,8 @@ public static class ChatChecks {
                 // Cancellation keeps the last answer and the unsent question available.
                 input.Text="Cancel this follow-up.";Task cancelled=Ask(window);request=await server.GetContextAsync();await Read(request);window.CancelWork();HttpListenerContext control=await server.GetContextAsync();Check(control.Request.Url.AbsolutePath.StartsWith("/cancel/"),"Cancelling chat reaches the EdgeRock control endpoint");await Reply(control,"Cancelled");request.Response.Abort();await cancelled;
                 Check(input.Text=="Cancel this follow-up."&&Field<ChatSession>(window,"conversation").Turns.Length==2&&transcript.Text.Contains("Cobalt."),"Cancelled chat preserves completed turns and the composer");
+                input.Text="Read this chart.";Task failed=Ask(window);request=await server.GetContextAsync();await Read(request);byte[] failure=Encoding.UTF8.GetBytes("{\"error\":\"Not enough graphics memory. Select a smaller region.\"}");request.Response.StatusCode=503;request.Response.ContentLength64=failure.Length;await request.Response.OutputStream.WriteAsync(failure,0,failure.Length);request.Response.Close();await failed;
+                Check(transcript.Controls.OfType<ChatMessageBubble>().Any(b=>b.AccessibleName.Contains("Not enough graphics memory"))&&input.Text=="Read this chart."&&Field<ChatSession>(window,"conversation").Turns.Length==2,"Model errors appear in the thread with their useful explanation and preserve the retry message");
                 using(Bitmap image=new Bitmap(20,20))window.GetType().GetMethod("SetImage",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(window,new object[]{image});Check(Field<ChatSession>(window,"conversation").Turns.Length==0,"A replacement screen grab cannot inherit an unrelated image conversation");
                 window.Close();
             }

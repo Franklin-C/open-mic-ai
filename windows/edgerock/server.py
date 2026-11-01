@@ -14,6 +14,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 MAX_REQUEST = 12 * 1024 * 1024
 
 
+def inference_error(error):
+    if isinstance(error, MemoryError) or type(error).__name__ == 'OutOfMemoryError' or ('out of memory' in str(error).lower() and isinstance(error, RuntimeError)):
+        return 'image_memory', 'There is not enough graphics memory to read this image. Select a smaller screen region, close other GPU-heavy apps, and try again.'
+    return 'inference_failed', 'The local image model could not finish this request. Try a smaller screen region or start a new chat.'
+
+
 def tokenizer_data(tokenizer):
     """Use LMFE's public core API; its released Transformers adapter predates v5."""
     from lmformatenforcer.tokenenforcer import TokenEnforcerTokenizerData
@@ -104,14 +110,53 @@ class EdgeRock:
         from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5VisionModel
         from vision import VisualModel
         config = AutoConfig.from_pretrained(self.path / "vision", local_files_only=True)
-        config.vision_config._attn_implementation = "eager"
+        # Native PyTorch SDPA avoids materializing the large image attention
+        # matrix. It works without the upstream Hopper/FlashAttention extension.
+        config.vision_config._attn_implementation = "sdpa"
         visual = Qwen3_5VisionModel(config.vision_config)
         visual.load_state_dict(load_file(str(self.path / "vision/model.safetensors")))
-        self.visual = VisualModel(self.model, config, visual).to(self.device, dtype=self.dtype).eval().requires_grad_(False)
+        # On 12 GB desktop GPUs, keeping both encoders resident leaves almost no
+        # room for image prefill alongside Windows' display allocations. The
+        # vision tower is only needed once per request; keep it on CPU and send
+        # its small feature tensor to the resident GPU language model.
+        small_cuda = self.device == 'cuda' and self.torch.cuda.get_device_properties(0).total_memory < 16*1024**3
+        if small_cuda:
+            import types
+            torch=self.torch
+            torch.set_num_threads(min(8,os.cpu_count() or 8))
+            class CpuVision(torch.nn.Module):
+                def __init__(self,tower,device,dtype):
+                    super().__init__();self.tower=tower.float().cpu();self.target_device=device;self.target_dtype=dtype
+                def forward(self,pixels,grid_thw,return_dict=True):
+                    result=self.tower(pixels.to('cpu',dtype=torch.float32),grid_thw=grid_thw.to('cpu'),return_dict=True)
+                    return types.SimpleNamespace(pooler_output=result.pooler_output.to(self.target_device,dtype=self.target_dtype))
+            self.visual=VisualModel(self.model,config,CpuVision(visual,self.device,self.dtype)).eval().requires_grad_(False)
+        else:
+            self.visual = VisualModel(self.model, config, visual).to(self.device, dtype=self.dtype).eval().requires_grad_(False)
         self.processor = AutoProcessor.from_pretrained(self.path / "vision", local_files_only=True)
-        self.processor.image_processor.size = {"longest_edge": 1048576, "shortest_edge": 65536}
+        self.processor.image_processor.size = {"longest_edge": 262144, "shortest_edge": 65536}
 
     def generate(self, messages, limit, schema=None, stop=None):
+        retry = False
+        try:
+            return self._generate(messages, limit, schema, stop)
+        except self.torch.OutOfMemoryError:
+            retry = self.vision and any(isinstance(m.get('content'),list) for m in messages)
+            if not retry:
+                raise
+        # Leave the exception scope before clearing cached allocations so its
+        # traceback cannot keep the failed request's GPU tensors alive.
+        self.torch.cuda.empty_cache()
+        if stop is not None and stop.is_set():
+            raise InterruptedError('Cancelled')
+        previous = dict(self.processor.image_processor.size)
+        try:
+            self.processor.image_processor.size = {'longest_edge':65536,'shortest_edge':65536}
+            return self._generate(messages, limit, schema, stop)
+        finally:
+            self.processor.image_processor.size = previous
+
+    def _generate(self, messages, limit, schema=None, stop=None):
         torch = self.torch
         if stop is not None and stop.is_set():
             raise InterruptedError("Cancelled")
@@ -295,8 +340,9 @@ def handler_for(engine, secret):
                 self.send_json({"error": "Cancelled"}, 499)
             except (ValueError, KeyError, TypeError):
                 self.send_json({"error": "Invalid, incomplete or unverified model response. Original text is unchanged."}, 422)
-            except Exception:
-                self.send_json({"error": "Local model inference failed. Original text is unchanged."}, 500)
+            except Exception as error:
+                code,message = inference_error(error)
+                self.send_json({"error":message,"code":code}, 503 if code=='image_memory' else 500)
             finally:
                 with operations_lock:
                     operations.pop(identity, None)
